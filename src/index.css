@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-size: 98%; /* Optimized mobile base font size */
+  }
+  @media (min-width: 640px) {
+    html {
+      font-size: 104%; /* ~110% comfortable desktop scale */
+    }
+  }
+  body {
+    font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+.font-bn {
+  font-family: 'Hind Siliguri', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Text & Content Animations */
+@keyframes textFadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-text-transition {
+  animation: textFadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Subtle background glowing orb animations */
+@keyframes floatOrb {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.05);
+  }
+}
+
+.animate-float-orb {
+  animation: floatOrb 6s ease-in-out infinite;
+}
+
+/* Printable Digital Receipt Styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide everything on screen by default */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make digital receipt and its descendants visible */
+  #digital-receipt-printable,
+  #digital-receipt-printable * {
+    visibility: visible !important;
+  }
+
+  /* Explicitly hide non-printable UI elements */
+  header, 
+  footer, 
+  nav, 
+  button, 
+  .no-print, 
+  .mobile-bottom-nav {
+    display: none !important;
+  }
+
+  /* Format, scale and center the digital receipt */
+  #digital-receipt-printable {
+    position: absolute !important;
+    left: 50% !important;
+    top: 0 !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    max-width: 750px !important;
+    margin: 0 auto !important;
+    padding: 28px !important;
+    border: 2px dashed #334155 !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+    border-radius: 16px !important;
+    page-break-inside: avoid !important;
+  }
+
+  #digital-receipt-printable .no-print {
+    display: none !important;
+  }
+}
+

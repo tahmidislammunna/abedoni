@@ -1,0 +1,6 @@
+{
+  "name": "আবেদনী - Abedoni",
+  "description": "বাংলাদেশের নির্ভরযোগ্য ডিজিটাল আবেদন সহায়তা প্ল্যাটফর্ম। ঘরে বসেই মাত্র ৫ মিনিটে SSC Board Challenge 2026 আবেদন সম্পন্ন করুন।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
