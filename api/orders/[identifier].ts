@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase, dbRowToOrder, orderToDbRow } from '../../src/lib/supabase';
-import { BoardChallengeOrder } from '../../src/types';
-import { generateSecondSmsCommand } from '../../src/data/boardsAndSubjects';
+import { supabase, dbRowToOrder, orderToDbRow } from '../_lib/supabase';
+import { BoardChallengeOrder } from '../_lib/types';
+import { generateSecondSmsCommand } from '../_lib/boardsAndSubjects';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const { identifier } = req.query;

@@ -1,12 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase, dbRowToOrder, orderToDbRow } from '../../src/lib/supabase';
-import { BoardChallengeOrder } from '../../src/types';
+import { supabase, dbRowToOrder, orderToDbRow } from '../_lib/supabase';
+import { BoardChallengeOrder } from '../_lib/types';
 import { 
   OFFICIAL_FEE_PER_SUBJECT, 
   ABEDONI_PLATFORM_FEE_PER_ORDER, 
   generateFirstSmsCommand,
   SSC_SUBJECTS
-} from '../../src/data/boardsAndSubjects';
+} from '../_lib/boardsAndSubjects';
 
 const mapSubjectNames = (codes: string[]): string[] => {
   return codes.map(code => {

@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase, dbRowToOrder } from '../../src/lib/supabase';
-import { BoardChallengeOrder } from '../../src/types';
+import { supabase, dbRowToOrder } from '../_lib/supabase';
+import { BoardChallengeOrder } from '../_lib/types';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

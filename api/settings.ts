@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { fetchAppSettingsFromSupabase, saveAppSettingsToSupabase } from '../src/lib/supabase';
-import { DEFAULT_APP_SETTINGS } from '../src/data/appSettings';
+import { fetchAppSettingsFromSupabase, saveAppSettingsToSupabase } from './_lib/supabase';
+import { DEFAULT_APP_SETTINGS } from './_lib/appSettings';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
