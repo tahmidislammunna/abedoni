@@ -1,3 +1,5 @@
+import { fetchAppSettingsFromSupabase, saveAppSettingsToSupabase } from '../lib/supabase';
+
 export interface AppSettings {
   siteName: string;
   heroHeadline: string;
@@ -92,5 +94,25 @@ export function saveAppSettings(newSettings: Partial<AppSettings>): AppSettings 
   } catch (e) {
     console.error('Failed to save app settings to localStorage', e);
   }
+
+  // Asynchronously save to Supabase Database
+  saveAppSettingsToSupabase(newSettings).then((dbUpdated) => {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(dbUpdated));
+    } catch {}
+  }).catch((err) => {
+    console.warn('Background Supabase save error:', err);
+  });
+
   return updated;
+}
+
+export async function syncAppSettingsWithSupabase(): Promise<AppSettings> {
+  try {
+    const remoteSettings = await fetchAppSettingsFromSupabase();
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(remoteSettings));
+    return remoteSettings;
+  } catch (err) {
+    return getAppSettings();
+  }
 }

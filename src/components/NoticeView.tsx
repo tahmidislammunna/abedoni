@@ -1,8 +1,21 @@
-import React from 'react';
-import { Bell, Calendar, ShieldAlert } from 'lucide-react';
-import { NOTICES } from '../data/mockData';
+import React, { useEffect, useState } from 'react';
+import { Calendar } from 'lucide-react';
+import { Notice } from '../types';
 
 export const NoticeView: React.FC = () => {
+  const [notices, setNotices] = useState<Notice[]>([]);
+
+  useEffect(() => {
+    fetch('/api/notices')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setNotices(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16 font-bn">
       <div className="text-center space-y-2">
@@ -18,7 +31,7 @@ export const NoticeView: React.FC = () => {
       </div>
 
       <div className="space-y-4">
-        {NOTICES.map(not => (
+        {notices.map(not => (
           <div key={not.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between">
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${

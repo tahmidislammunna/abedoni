@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { BOARDS_LIST, SSC_SUBJECTS, OFFICIAL_FEE_PER_SUBJECT, ABEDONI_PLATFORM_FEE_PER_ORDER } from '../data/boardsAndSubjects';
-import { FAQ_LIST, REVIEWS_LIST, NOTICES } from '../data/mockData';
+import { CustomerReview } from '../types';
 import { getAppSettings } from '../data/appSettings';
 
 interface HomeViewProps {
@@ -37,6 +37,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigateTab,
 }) => {
   const settings = getAppSettings();
+  const [reviews, setReviews] = useState<CustomerReview[]>([]);
+
+  useEffect(() => {
+    fetch('/api/reviews')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setReviews(data);
+      })
+      .catch(() => {});
+  }, []);
   
   // Soft Typewriter Headline Sequence State
   const typewriterPhrases = ['আবেদন হোক সহজ', 'আবেদন হোক নিরাপদ', 'আবেদন হোক দ্রুত'];
@@ -460,7 +470,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {REVIEWS_LIST.map(rev => (
+          {reviews.map(rev => (
             <div key={rev.id} className="bg-white/50 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <div>

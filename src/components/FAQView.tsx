@@ -1,21 +1,32 @@
-import React, { useState } from 'react';
-import { HelpCircle, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
-import { FAQ_LIST } from '../data/mockData';
-import { SUPPORT_CONFIG } from '../data/boardsAndSubjects';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { FAQItem } from '../types';
 import { getAppSettings } from '../data/appSettings';
 
 export const FAQView: React.FC = () => {
+  const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const settings = getAppSettings();
   const boardFee = settings.officialBoardFee || 175;
   const platformFee = settings.abedoniServiceFee || 99;
   const smsFee = settings.smsFeePerSubject || 12;
 
+  useEffect(() => {
+    fetch('/api/faqs')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setFaqs(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const toggle = (idx: number) => {
     setOpenIndex(openIndex === idx ? null : idx);
   };
 
-  const getDynamicAnswer = (faq: typeof FAQ_LIST[0], idx: number) => {
+  const getDynamicAnswer = (faq: FAQItem) => {
     if (faq.questionBn.includes('কত টাকা খরচ')) {
       const sampleTotal = boardFee + smsFee + platformFee;
       return `শিক্ষা বোর্ডের অফিশিয়াল ফি প্রতি বিষয়ের জন্য ৳${boardFee} এবং সিস্টেম SMS ফি ৳${smsFee}। আবেদনী প্ল্যাটফর্মের সার্ভিস চার্জ প্রতি অ্যাপ্লিকেশনে মাত্র ৳${platformFee}। উদাহরণস্বরূপ: ১টি বিষয়ের মোট খরচ ৳${boardFee} + ৳${smsFee} + ৳${platformFee} = ৳${sampleTotal}।`;
@@ -38,7 +49,7 @@ export const FAQView: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {FAQ_LIST.map((faq, idx) => {
+        {faqs.map((faq, idx) => {
           const isOpen = openIndex === idx;
           return (
             <div key={idx} className="bg-white/40 backdrop-blur-xl rounded-2xl border border-white/60 overflow-hidden shadow-sm transition-all">
@@ -51,7 +62,7 @@ export const FAQView: React.FC = () => {
               </button>
               {isOpen && (
                 <div className="px-5 pb-5 pt-1 text-slate-700 text-xs sm:text-sm leading-relaxed border-t border-white/40 bg-white/30 backdrop-blur-md">
-                  {getDynamicAnswer(faq, idx)}
+                  {getDynamicAnswer(faq)}
                 </div>
               )}
             </div>
@@ -63,13 +74,13 @@ export const FAQView: React.FC = () => {
         <h3 className="font-bold text-slate-900 text-base">আরও কোনো প্রশ্ন আছে?</h3>
         <p className="text-slate-600 text-xs">আমাদের কাস্টমার সাপোর্ট টিম আপনাকে সার্বক্ষণিক সহায়তা দিতে প্রস্তুত।</p>
         <a
-          href={`https://wa.me/${SUPPORT_CONFIG.whatsappNumber}`}
+          href={`https://wa.me/${settings.whatsappNumber || '01577777092'}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-2xl text-xs shadow-lg shadow-emerald-600/25 hover:scale-[1.02] transition-all"
         >
           <MessageSquare className="w-4 h-4" />
-          <span>WhatsApp এ সাপোর্ট নিন ({SUPPORT_CONFIG.supportHours})</span>
+          <span>WhatsApp এ সাপোর্ট নিন ({settings.supportHours || 'সকাল ৭:০০ টা - রাত ১১:০০ টা'})</span>
         </a>
       </div>
     </div>

@@ -14,7 +14,7 @@ import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { PoliciesModal } from './components/PoliciesModal';
 import { PRDView } from './components/PRDView';
 import { BoardChallengeOrder } from './types';
-import { getAppSettings } from './data/appSettings';
+import { getAppSettings, syncAppSettingsWithSupabase } from './data/appSettings';
 import { getWhatsappDirectUrl } from './data/boardsAndSubjects';
 import { 
   Heart, 
@@ -33,6 +33,11 @@ export default function App() {
     return sessionStorage.getItem('abedoni_admin_authed') === 'true';
   });
   const [showPRD, setShowPRD] = useState<boolean>(false);
+
+  // Sync App Settings with Supabase on mount
+  React.useEffect(() => {
+    syncAppSettingsWithSupabase().catch(() => {});
+  }, []);
 
   // Check URL pathname or hash on load & popstate
   React.useEffect(() => {
