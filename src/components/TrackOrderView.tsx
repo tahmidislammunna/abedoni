@@ -12,7 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus } from '../types';
-import { generateStudentWhatsappMessage } from '../data/boardsAndSubjects';
+import { generateStudentWhatsappMessage, getWhatsappDirectUrl } from '../data/boardsAndSubjects';
 import { getAppSettings } from '../data/appSettings';
 
 interface TrackOrderViewProps {
@@ -362,7 +362,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
 
               <div className="pt-2">
                 <a
-                  href={`https://wa.me/${settings.whatsappNumber}?text=${generateStudentWhatsappMessage(order)}`}
+                  href={getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', generateStudentWhatsappMessage(order, settings.whatsappTemplateStudentToAdmin))}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-lg shadow-emerald-600/30"

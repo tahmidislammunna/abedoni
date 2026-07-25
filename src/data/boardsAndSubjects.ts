@@ -69,33 +69,87 @@ export function generateSecondSmsCommand(pin: string, contactPhone: string): str
 }
 
 /**
+ * Generate 1-click WhatsApp direct URL
+ */
+export function getWhatsappDirectUrl(phone: string = '01577777092', textOrEncodedMessage: string = ''): string {
+  const cleanPhone = phone.replace(/\D/g, '');
+  const phoneWithCountry = cleanPhone.startsWith('88') ? cleanPhone : `88${cleanPhone}`;
+  if (!textOrEncodedMessage) {
+    return `https://wa.me/${phoneWithCountry}`;
+  }
+  const isEncoded = textOrEncodedMessage.includes('%');
+  const msg = isEncoded ? textOrEncodedMessage : encodeURIComponent(textOrEncodedMessage);
+  return `https://wa.me/${phoneWithCountry}?text=${msg}`;
+}
+
+/**
+ * Helper to replace template placeholder tags like {studentName}, {orderId}, etc.
+ */
+export function replaceTemplateVars(template: string, vars: Record<string, string | number>): string {
+  if (!template) return '';
+  let result = template;
+  Object.keys(vars).forEach((key) => {
+    const val = String(vars[key] ?? '');
+    const regex = new RegExp(`\\{${key}\\}`, 'g');
+    result = result.replace(regex, val);
+  });
+  return result;
+}
+
+/**
  * Pre-formatted WhatsApp text for student to send to Abedoni Support
  */
-export function generateStudentWhatsappMessage(order: {
-  id: string;
-  studentName: string;
-  roll: string;
-  board: string;
-  totalFee: number;
-  trxId: string;
-  paymentMethod: string;
-}): string {
-  return encodeURIComponent(
-`আসসালামু আলাইকুম!
+export function generateStudentWhatsappMessage(
+  order: {
+    id: string;
+    studentName: string;
+    roll: string;
+    reg?: string;
+    regNumber?: string;
+    board: string;
+    totalFee: number;
+    trxId: string;
+    paymentMethod: string;
+    subjects?: any;
+    subjectNamesBn?: string[];
+  },
+  customTemplate?: string
+): string {
+  const subjectsStr = Array.isArray(order.subjectNamesBn) && order.subjectNamesBn.length > 0
+    ? order.subjectNamesBn.join(', ')
+    : Array.isArray(order.subjects)
+      ? order.subjects.map((s: any) => typeof s === 'string' ? s : `${s.name || s.nameBn || ''} (${s.code || ''})`).join(', ')
+      : '';
+
+  const vars = {
+    orderId: order.id,
+    studentName: order.studentName,
+    rollNumber: order.roll,
+    regNumber: order.reg || order.regNumber || 'N/A',
+    boardName: order.board,
+    totalFee: order.totalFee,
+    paymentMethod: order.paymentMethod,
+    trxId: order.trxId,
+    subjects: subjectsStr,
+    siteUrl: typeof window !== 'undefined' ? window.location.origin : '',
+  };
+
+  const templateToUse = customTemplate || `আসসালামু আলাইকুম!
 
 আমি আবেদনের ডিজিটাল ট্র্যাকিং বোর্ডে অর্ডার সম্পন্ন করেছি।
 
 📌 **অর্ডার বিবরণী:**
-• **অর্ডার আইডি:** ${order.id}
-• **শিক্ষার্থীর নাম:** ${order.studentName}
-• **রোল নম্বর:** ${order.roll}
-• **শিক্ষা বোর্ড:** ${order.board}
-• **মোট পরিশোধিত ফি:** ৳${order.totalFee}
-• **পেমেন্ট মাধ্যম:** ${order.paymentMethod}
-• **ট্রানজেকশন ID:** ${order.trxId}
+• **অর্ডার আইডি:** {orderId}
+• **শিক্ষার্থীর নাম:** {studentName}
+• **রোল নম্বর:** {rollNumber}
+• **শিক্ষা বোর্ড:** {boardName}
+• **মোট পরিশোধিত ফি:** ৳{totalFee}
+• **পেমেন্ট মাধ্যম:** {paymentMethod}
+• **ট্রানজেকশন ID:** {trxId}
 
-অনুগ্রহ করে আমার আবেদনটি বোর্ড চ্যালেঞ্জ সিস্টেমের টেলিটক পোর্টালে সাবমিট করে দিন। ধন্যবাদ!`
-  );
+অনুগ্রহ করে আমার আবেদনটি বোর্ড চ্যালেঞ্জ সিস্টেমের টেলিটক পোর্টালে সাবমিট করে দিন। ধন্যবাদ!`;
+
+  return encodeURIComponent(replaceTemplateVars(templateToUse, vars));
 }
 
 /**
@@ -103,7 +157,8 @@ export function generateStudentWhatsappMessage(order: {
  */
 export const SUPPORT_CONFIG = {
   whatsappNumber: '01577777092',
-  whatsappDisplay: '01577777092',
+  whatsappDisplay: '+8801577777092',
+  facebookPageUrl: 'https://facebook.com/abedoni.bd',
   bkashNumber: '01720990882',
   nagadNumber: '01720990882',
   rocketNumber: '01720990882',

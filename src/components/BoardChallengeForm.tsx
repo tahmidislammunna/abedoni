@@ -15,7 +15,7 @@ import {
   Download,
   Printer
 } from 'lucide-react';
-import { BOARDS_LIST, SSC_SUBJECTS, generateStudentWhatsappMessage } from '../data/boardsAndSubjects';
+import { BOARDS_LIST, SSC_SUBJECTS, generateStudentWhatsappMessage, getWhatsappDirectUrl } from '../data/boardsAndSubjects';
 import { BoardChallengeOrder, EducationBoard, ExamType, PaymentMethod } from '../types';
 import { getAppSettings } from '../data/appSettings';
 
@@ -44,7 +44,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   const [phone, setPhone] = useState('');
 
   // Selected Subject Codes
-  const [selectedSubjectCodes, setSelectedSubjectCodes] = useState<string[]>(['101']);
+  const [selectedSubjectCodes, setSelectedSubjectCodes] = useState<string[]>([]);
 
   // Payment state
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bKash');
@@ -67,7 +67,6 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
 
   const handleToggleSubject = (code: string) => {
     if (selectedSubjectCodes.includes(code)) {
-      if (selectedSubjectCodes.length === 1) return; // Must select at least 1
       setSelectedSubjectCodes(selectedSubjectCodes.filter(c => c !== code));
     } else {
       setSelectedSubjectCodes([...selectedSubjectCodes, code]);
@@ -672,7 +671,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
             </div>
 
             <a
-              href={`https://wa.me/${settings.whatsappNumber}?text=${generateStudentWhatsappMessage(completedOrder)}`}
+              href={getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', generateStudentWhatsappMessage(completedOrder, settings.whatsappTemplateStudentToAdmin))}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-2xl text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/25"

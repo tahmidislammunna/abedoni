@@ -74,11 +74,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   // Live Fee Calculator State
   const [selectedBoard, setSelectedBoard] = useState('DHA');
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['101', '107']);
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
 
   const toggleSubject = (code: string) => {
     if (selectedSubjects.includes(code)) {
-      if (selectedSubjects.length === 1) return; // keep at least 1
       setSelectedSubjects(selectedSubjects.filter(c => c !== code));
     } else {
       setSelectedSubjects([...selectedSubjects, code]);
@@ -86,7 +85,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   };
 
   const boardFeePerSubject = settings.officialBoardFee || 175;
-  const smsFeeTotal = settings.smsFeePerSubject || 6; // Fixed 6 taka total (2 SMS x 3 taka)
+  const smsFeeTotal = selectedSubjects.length > 0 ? (settings.smsFeePerSubject || 6) : 0;
   const platformFee = settings.abedoniServiceFee || 99;
 
   const officialTotal = selectedSubjects.length * boardFeePerSubject;

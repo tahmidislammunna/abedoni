@@ -15,6 +15,7 @@ import { PoliciesModal } from './components/PoliciesModal';
 import { PRDView } from './components/PRDView';
 import { BoardChallengeOrder } from './types';
 import { getAppSettings } from './data/appSettings';
+import { getWhatsappDirectUrl } from './data/boardsAndSubjects';
 import { 
   Heart, 
   MessageSquare, 
@@ -183,22 +184,37 @@ export default function App() {
             </div>
 
             {/* Support Info */}
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-xs">
               <h4 className="font-bold text-white text-sm">কাস্টমার সাপোর্ট</h4>
               <p className="text-slate-400">প্রতিদিন সকাল ৭টা থেকে রাত ১১টা পর্যন্ত হেল্পডেস্ক খোলা থাকে।</p>
               <div className="space-y-1 text-slate-300 font-mono">
-                <p>WhatsApp: {settings.whatsappNumber}</p>
+                <p>WhatsApp: {settings.whatsappNumber || '01577777092'}</p>
                 <p>Email: {settings.officialEmail}</p>
+                <p className="font-bn font-semibold text-blue-400 hover:underline">
+                  <a href={settings.facebookPageUrl || 'https://facebook.com/abedoni.bd'} target="_blank" rel="noopener noreferrer">
+                    Facebook: facebook.com/abedoni.bd
+                  </a>
+                </p>
               </div>
-              <a
-                href={`https://wa.me/${settings.whatsappNumber}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition mt-1 shadow-sm"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>WhatsApp এ চ্যাট করুন</span>
-              </a>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <a
+                  href={getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', 'আসসালামু আলাইকুম, আবেদনী সম্পর্কে সাপোর্ট প্রয়োজন।')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>WhatsApp সাপোর্ট</span>
+                </a>
+                <a
+                  href={settings.facebookPageUrl || 'https://facebook.com/abedoni.bd'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-2 rounded-xl text-xs transition shadow-sm"
+                >
+                  <span>Facebook পেজ</span>
+                </a>
+              </div>
             </div>
 
             {/* Policies & System */}
@@ -227,7 +243,7 @@ export default function App() {
 
           <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
             <div className="flex items-center gap-3">
-              <p>© 2026 आवेदनी (Abedoni). সর্বস্বত্ব সংরক্ষিত।</p>
+              <p>© 2026 আবেদনী (Abedoni). সর্বস্বত্ব সংরক্ষিত।</p>
               <button 
                 onClick={() => {
                   setIsAdmin(true);

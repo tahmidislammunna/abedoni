@@ -32,12 +32,12 @@ import {
   LogOut
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
-import { BOARDS_LIST, generateFirstSmsCommand, generateSecondSmsCommand } from '../data/boardsAndSubjects';
+import { BOARDS_LIST, generateFirstSmsCommand, generateSecondSmsCommand, replaceTemplateVars } from '../data/boardsAndSubjects';
 import { getAppSettings, saveAppSettings, AppSettings } from '../data/appSettings';
 
 export const AdminPanel: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
-  const [settingsSubTab, setSettingsSubTab] = useState<'branding' | 'payments' | 'support' | 'policies' | 'system'>('branding');
+  const [settingsSubTab, setSettingsSubTab] = useState<'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system'>('branding');
   
   const [orders, setOrders] = useState<BoardChallengeOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -182,20 +182,35 @@ export const AdminPanel: React.FC = () => {
     const phoneWithCountry = cleanPhone.startsWith('88') ? cleanPhone : `88${cleanPhone}`;
     const siteUrl = window.location.origin;
 
-    let text = '';
+    const vars = {
+      studentName: order.studentName,
+      orderId: order.id,
+      rollNumber: order.roll,
+      regNumber: order.reg || 'N/A',
+      boardName: order.board,
+      totalFee: order.totalFee,
+      trxId: order.trxId,
+      paymentMethod: order.paymentMethod,
+      teletalkPin: order.teletalkPin || inputPin || 'N/A',
+      siteUrl: siteUrl,
+      subjects: order.subjectNamesBn ? order.subjectNamesBn.join(', ') : order.subjects.join(', '),
+    };
+
+    let template = '';
     if (step === 'received') {
-      text = `প্রিয় ${order.studentName}, আবেদনী (Abedoni)-তে আপনার ${order.board} বোর্ডের SSC বোর্ড চ্যালেঞ্জ ফি (৳${order.totalFee}) সফলভাবে প্রাপ্ত হয়েছে। Order ID: ${order.id}। ট্র্যাকিং লিংক: ${siteUrl}`;
+      template = appSettings.whatsappTemplateReceived || `প্রিয় {studentName}, আবেদনী (Abedoni)-তে আপনার {boardName} বোর্ডের SSC বোর্ড চ্যালেঞ্জ ফি (৳{totalFee}) সফলভাবে প্রাপ্ত হয়েছে। Order ID: {orderId}। ট্র্যাকিং লিংক: {siteUrl}`;
     } else if (step === 'processing') {
-      text = `প্রিয় ${order.studentName}, আপনার বোর্ড চ্যালেঞ্জ আবেদনটি (ID: ${order.id}, Roll: ${order.roll}) সফলভাবে প্রসেসিংয়ে রয়েছে (Written Processing by Abedoni)। কোনো চিন্তা নেই, খুব দ্রুতই টেলিটকে জমা দেওয়া হবে।`;
+      template = appSettings.whatsappTemplateProcessing || `প্রিয় {studentName}, আপনার বোর্ড চ্যালেঞ্জ আবেদনটি (ID: {orderId}, Roll: {rollNumber}) সফলভাবে প্রসেসিংয়ে রয়েছে (Written Processing by Abedoni)। কোনো চিন্তা নেই, খুব দ্রুতই টেলিটকে জমা দেওয়া হবে।`;
     } else if (step === 'pin') {
-      text = `প্রিয় ${order.studentName}, আপনার आवेदনী আবেদনের ১ম ধাপ টেলিটক সার্ভারে সাবমিট করা হয়েছে। TeleTalk PIN: ${order.teletalkPin || inputPin || 'N/A'}। ২য় কনফার্মেশন চূড়ান্ত করা হচ্ছে।`;
+      template = appSettings.whatsappTemplatePin || `প্রিয় {studentName}, আপনার আবেদনী আবেদনের ১ম ধাপ টেলিটক সার্ভারে সাবমিট করা হয়েছে। TeleTalk PIN: {teletalkPin}। ২য় কনফার্মেশন চূড়ান্ত করা হচ্ছে।`;
     } else if (step === 'completed') {
-      text = `অভিনন্দন ${order.studentName}! আপনার SSC বোর্ড চ্যালেঞ্জ আবেদনটি সফলভাবে শিক্ষা বোর্ডে জমা হয়েছে। Order ID: ${order.id}। আপনার অনলাইন ডিজিটাল ট্র্যাকিং রসিদ দেখতে ভিজিট করুন: ${siteUrl}`;
+      template = appSettings.whatsappTemplateCompleted || `অভিনন্দন {studentName}! আপনার SSC বোর্ড চ্যালেঞ্জ আবেদনটি সফলভাবে শিক্ষা বোর্ডে জমা হয়েছে। Order ID: {orderId}। আপনার অনলাইন ডিজিটাল ট্র্যাকিং রসিদ দেখতে ভিজিট করুন: {siteUrl}`;
     } else if (step === 'issue') {
-      text = `প্রিয় ${order.studentName}, আপনার আবেদনের প্রদানকৃত TrxID (${order.trxId}) বা পেমেন্ট তথ্যে অসঙ্গতি পাওয়া গেছে। অনুগ্রহ করে সঠিক তথ্যের স্ক্রিনশট পাঠিয়ে আমাদের সাথে যোগাযোগ করুন। Order ID: ${order.id}`;
+      template = appSettings.whatsappTemplateIssue || `প্রিয় {studentName}, আপনার আবেদনের প্রদানকৃত TrxID ({trxId}) বা পেমেন্ট তথ্যে অসঙ্গতি পাওয়া গেছে। অনুগ্রহ করে সঠিক তথ্যের স্ক্রিনশট পাঠিয়ে আমাদের সাথে যোগাযোগ করুন। Order ID: {orderId}`;
     }
 
-    return `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(text)}`;
+    const formattedText = replaceTemplateVars(template, vars);
+    return `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(formattedText)}`;
   };
 
   return (
@@ -908,6 +923,16 @@ export const AdminPanel: React.FC = () => {
             >
               📜 পলিসি ডকুমেন্টস এডিটর (Policies Editor)
             </button>
+
+            <button
+              type="button"
+              onClick={() => setSettingsSubTab('whatsapp')}
+              className={`px-4 py-2 rounded-xl transition ${
+                settingsSubTab === 'whatsapp' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+              }`}
+            >
+              💬 WhatsApp অটো-মেসেজ টেমপ্লেট (1-Click Auto Messaging)
+            </button>
           </div>
 
           {/* SUBTAB 1: BRANDING & TITLES */}
@@ -1123,6 +1148,125 @@ export const AdminPanel: React.FC = () => {
                   onChange={e => setAppSettings({ ...appSettings, termsText: e.target.value })}
                   placeholder="বোর্ড ফি ও নির্দিষ্ট সার্ভিস ফি দিয়ে আবেদন সম্পন্ন করতে হবে..."
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* SUBTAB 5: WHATSAPP 1-CLICK AUTO MESSAGING CONTROLLER */}
+          {settingsSubTab === 'whatsapp' && (
+            <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
+              <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-emerald-600" />
+                    <span>WhatsApp ১-ক্লিক অটো-মেসেজিং টেমপ্লেট কন্ট্রোলার</span>
+                  </h3>
+                  <p className="text-slate-500 text-xs mt-1">
+                    অ্যাডমিন প্যানেল থেকে কাস্টমারের WhatsApp-এ ১-ক্লিকে পাঠানো যেকোনো মেসেজের ফরম্যাট বা টেক্সট এখানে আপনার পছন্দমতো পরিবর্তন করতে পারবেন।
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic Variables Guide Banner */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-emerald-950">
+                <h4 className="font-bold text-xs uppercase tracking-wide text-emerald-800 mb-2 flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>উপলব্ধ ডাইনামিক ফিল্ডসমূহ (Dynamic Placeholders)</span>
+                </h4>
+                <p className="text-xs text-emerald-800 mb-2">
+                  মেসেজের ভেতরে নিচের ট্যাগগুলো লিখলে তা কাস্টমারের আসল তথ্যে রূপান্তরিত হয়ে যাবে:
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 font-mono text-[11px]">
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{studentName}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{orderId}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{rollNumber}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{regNumber}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{boardName}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{totalFee}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{paymentMethod}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{trxId}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{teletalkPin}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{siteUrl}`}</span>
+                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{subjects}`}</span>
+                </div>
+              </div>
+
+              {/* Template 1: Student Order Submission WhatsApp Text */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ১. শিক্ষার্থী অর্ডার নিশ্চিত করার পর আমাদের হেল্পডেস্কে পাঠানোর মেসেজ টেমপ্লেট:
+                </label>
+                <textarea
+                  rows={6}
+                  value={appSettings.whatsappTemplateStudentToAdmin || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplateStudentToAdmin: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Template 2: Step Received */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ২. অর্ডার ফি প্রাপ্তি নিশ্চিতকরণ (Step: Order Received) মেসেজ:
+                </label>
+                <textarea
+                  rows={3}
+                  value={appSettings.whatsappTemplateReceived || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplateReceived: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Template 3: Step Processing */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ৩. ম্যানুয়াল আবেদন প্রসেসিং চলছে (Step: Written Processing) মেসেজ:
+                </label>
+                <textarea
+                  rows={3}
+                  value={appSettings.whatsappTemplateProcessing || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplateProcessing: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Template 4: Step PIN Received (1st SMS Done) */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ৪. ১ম এসএমএস সফল ও পিন বার্তা (Step: 1st SMS Sent / PIN Received) মেসেজ:
+                </label>
+                <textarea
+                  rows={3}
+                  value={appSettings.whatsappTemplatePin || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplatePin: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Template 5: Step Completed */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ৫. আবেদন ১০০% সফল ও রসিদ প্রস্তুত (Step: Application Completed) মেসেজ:
+                </label>
+                <textarea
+                  rows={3}
+                  value={appSettings.whatsappTemplateCompleted || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplateCompleted: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              {/* Template 6: Step Issue / TrxID Mismatch */}
+              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
+                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
+                  ৬. পেমেন্ট তথ্যে অসঙ্গতি / সমস্যা (Step: Payment Issue) মেসেজ:
+                </label>
+                <textarea
+                  rows={3}
+                  value={appSettings.whatsappTemplateIssue || ''}
+                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplateIssue: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             </div>
