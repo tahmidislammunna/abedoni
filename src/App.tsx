@@ -23,9 +23,34 @@ import {
   BookOpen
 } from 'lucide-react';
 
+function getTabFromPath(pathname: string): string {
+  const p = pathname.toLowerCase().replace(/\/$/, '');
+  if (p === '/apply') return 'apply';
+  if (p === '/tracking' || p === '/track') return 'track';
+  if (p === '/info' || p === '/pricing') return 'pricing';
+  if (p === '/notice' || p === '/notices') return 'notice';
+  if (p === '/faq' || p === '/faqs') return 'faq';
+  if (p === '/about') return 'about';
+  return 'home';
+}
+
+function getPathFromTab(tab: string): string {
+  switch (tab) {
+    case 'apply': return '/apply';
+    case 'track': return '/tracking';
+    case 'pricing': return '/info';
+    case 'notice': return '/notice';
+    case 'faq': return '/faq';
+    case 'about': return '/about';
+    case 'home': default: return '/';
+  }
+}
+
 export default function App() {
   const settings = getAppSettings();
-  const [activeTab, setActiveTab] = useState<string>('home');
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    return getTabFromPath(window.location.pathname);
+  });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
     return window.location.pathname === '/admin-munna' || window.location.hash === '#/admin-munna';
   });
@@ -33,6 +58,15 @@ export default function App() {
     return sessionStorage.getItem('abedoni_admin_authed') === 'true';
   });
   const [showPRD, setShowPRD] = useState<boolean>(false);
+
+  const setActiveTab = (tab: string) => {
+    setActiveTabState(tab);
+    if (isAdmin) setIsAdmin(false);
+    const targetPath = getPathFromTab(tab);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+  };
 
   // Sync App Settings with Supabase on mount
   React.useEffect(() => {
@@ -42,8 +76,12 @@ export default function App() {
   // Check URL pathname or hash on load & popstate
   React.useEffect(() => {
     const handleUrlCheck = () => {
-      if (window.location.pathname === '/admin-munna' || window.location.hash === '#/admin-munna') {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
+      if (path === '/admin-munna' || window.location.hash === '#/admin-munna') {
         setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+        setActiveTabState(getTabFromPath(path));
       }
     };
     window.addEventListener('popstate', handleUrlCheck);
@@ -153,9 +191,16 @@ export default function App() {
             
             {/* Brand Intro */}
             <div className="space-y-3 md:col-span-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <img src={settings.logoIconUrl} alt="Icon" className="w-8 h-8 object-contain" />
-                <span className="text-xl font-bold text-white">আবেদনী (Abedoni)</span>
+                <img 
+                  src="https://munna.pro.bd/tmassets/wordmarkofAbedoni.svg" 
+                  alt="Abedoni Wordmark" 
+                  className="h-7 w-auto object-contain brightness-0 invert" 
+                  onError={(e) => {
+                    (e.target as HTMLElement).style.display = 'none';
+                  }}
+                />
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
                 SSC ও HSC বোর্ড চ্যালেঞ্জ অনলাইন সেবা। ঘরে বসেই নিরাপদে ও নির্ভরযোগ্যভাবে আবেদন সম্পন্ন করুন।

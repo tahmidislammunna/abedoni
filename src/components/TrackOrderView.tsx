@@ -25,7 +25,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
   onNavigateApply,
 }) => {
   const settings = getAppSettings();
-  const [searchTerm, setSearchTerm] = useState(initialOrderId || 'ABD-2026-10842');
+  const [searchTerm, setSearchTerm] = useState(initialOrderId || '');
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [order, setOrder] = useState<BoardChallengeOrder | null>(null);
@@ -43,7 +43,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
       setOrder(data);
     } catch (err: any) {
       setOrder(null);
-      setErrorMsg(err.message || 'নেটওয়ার্ক এরর! অনুগ্রহ করে সঠিক Order ID বা রোল দিন।');
+      setErrorMsg(err.message || 'নেটওয়ার্ক এরর! অনুগ্রহ করে সঠিক Order ID, রোল নম্বর বা TrxID দিন।');
     } finally {
       setLoading(false);
     }
@@ -51,10 +51,8 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
 
   useEffect(() => {
     if (initialOrderId) {
+      setSearchTerm(initialOrderId);
       fetchOrderDetails(initialOrderId);
-    } else {
-      // Fetch default sample order for instant demo view
-      fetchOrderDetails('ABD-2026-10842');
     }
   }, [initialOrderId]);
 
@@ -121,10 +119,23 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
           <p className="text-sm font-bold">{errorMsg}</p>
           <button
             onClick={onNavigateApply}
-            className="text-xs bg-white text-rose-700 font-bold px-4 py-2 rounded-xl border border-rose-200 hover:bg-rose-100"
+            className="text-xs bg-white text-rose-700 font-bold px-4 py-2 rounded-xl border border-rose-200 hover:bg-rose-100 cursor-pointer"
           >
             নতুন আবেদনের ফর্মে যান
           </button>
+        </div>
+      )}
+
+      {/* Empty State Instructions when no order is searched yet */}
+      {!order && !errorMsg && !loading && (
+        <div className="bg-white/70 backdrop-blur-2xl p-8 rounded-[32px] border border-white/80 shadow-lg text-center space-y-4 max-w-xl mx-auto">
+          <div className="w-16 h-16 bg-blue-100/80 rounded-3xl flex items-center justify-center mx-auto text-blue-600 shadow-inner">
+            <Receipt className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-black text-slate-900">আপনার তথ্য দিয়ে আবেদন খুঁজুন</h3>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            উপরে দেওয়া ইনপুট বক্সে আপনার <strong className="text-slate-800">Order ID</strong> (যেমন: <code className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-lg border border-blue-200 font-mono">ABD-2026-XXXXX</code>), <strong className="text-slate-800">এসএসসি রোল নম্বর</strong>, <strong className="text-slate-800">মোবাইল নম্বর</strong> অথবা <strong className="text-slate-800">পেমেন্ট TrxID</strong> লিখে সার্চ বাটন চাপুন।
+          </p>
         </div>
       )}
 

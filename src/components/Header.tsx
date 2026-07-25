@@ -39,18 +39,17 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
-          {/* Logo with Icon SVG or Wordmark */}
+          {/* Logo with Icon SVG & Wordmark */}
           <div 
             onClick={() => { setActiveTab('home'); setIsAdmin(false); }}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer group"
           >
-            <div className="w-11 h-11 rounded-2xl bg-white p-1 border border-blue-100 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-white p-1 border border-blue-100 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
               <img 
                 src={SUPPORT_CONFIG.logoIconUrl} 
                 alt="Abedoni Logo Icon" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
-                  // Fallback to stylized 'আ' if image fails to load
                   (e.target as HTMLElement).style.display = 'none';
                   if ((e.target as HTMLElement).parentElement) {
                     (e.target as HTMLElement).parentElement!.innerHTML = '<span class="text-blue-600 font-black text-2xl">আ</span>';
@@ -58,14 +57,21 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
               />
             </div>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight font-bn">আবেদনী</span>
-                <span className="text-xs bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded-md border border-blue-200">
-                  Abedoni
+            <div className="flex items-center gap-2">
+              <img 
+                src="https://munna.pro.bd/tmassets/wordmarkofAbedoni.svg" 
+                alt="আবেদনী Abedoni" 
+                className="h-7 sm:h-9 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+              <div className="hidden sm:flex flex-col border-l border-slate-200 pl-2">
+                <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded border border-blue-200 inline-block w-fit">
+                  SSC 2026
                 </span>
+                <p className="text-[11px] text-slate-500 font-bold font-bn">ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা</p>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 font-bold font-bn -mt-0.5">ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা</p>
             </div>
           </div>
 

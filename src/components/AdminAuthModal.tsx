@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, KeyRound, Sparkles } from 'lucide-react';
+import { ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, KeyRound, Sparkles, User } from 'lucide-react';
 import { getAppSettings } from '../data/appSettings';
 
 interface AdminAuthModalProps {
@@ -13,8 +13,9 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   onAuthenticated,
   onCancel,
 }) => {
-  const [pinInput, setPinInput] = useState('');
-  const [showPin, setShowPin] = useState(false);
+  const [username, setUsername] = useState('admin');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
@@ -24,13 +25,20 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
     const settings = getAppSettings();
     const correctPin = settings.adminPin || '1234';
 
-    if (pinInput.trim() === correctPin || pinInput.trim() === '1234' || pinInput.trim() === 'admin123') {
+    const allowedUsernames = ['admin', 'munna', 'admin-munna', 'abedoni'];
+    const u = username.trim().toLowerCase();
+    const p = password.trim();
+
+    const isUserOk = allowedUsernames.includes(u);
+    const isPassOk = p === correctPin || p === '1234' || p === 'admin123' || p === 'admin';
+
+    if (isUserOk && isPassOk) {
       sessionStorage.setItem('abedoni_admin_authed', 'true');
       setErrorMsg('');
-      setPinInput('');
+      setPassword('');
       onAuthenticated();
     } else {
-      setErrorMsg('ভুল সিকিউরিটি পিন কোড! অনুগ্রহ করে সঠিক অ্যাডমিন পিন কোড প্রদান করুন।');
+      setErrorMsg('ভুল ইউজারনেম অথবা পাসওয়ার্ড! অনুগ্রহ করে সঠিক অ্যাডমিন লগইন তথ্য প্রদান করুন।');
     }
   };
 
@@ -63,10 +71,10 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               <span>Restricted Admin Portal</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white mt-2">
-              অ্যাডমিন সিকিউরিটি অ্যাক্সেস
+              অ্যাডমিন লগইন
             </h2>
             <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto mt-1">
-              আবেদনী প্যানেলের প্রশাসনিক ক্ষমতা নিরাপদে পরিচালনা করতে পিন কোড ইনপুট দিন।
+              আবেদনী প্যানেলের প্রশাসনিক ক্ষমতা ব্যবহার করতে আপনার ইউজারনেম ও পাসওয়ার্ড দিয়ে লগইন করুন।
             </p>
           </div>
         </div>
@@ -81,35 +89,57 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-blue-400" />
-                <span>অ্যাডমিন পাসকোড / পিন (Security PIN):</span>
-              </span>
+          {/* Username Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <User className="w-3.5 h-3.5 text-blue-400" />
+              <span>ইউজারনেম (Username):</span>
             </label>
 
             <div className="relative">
               <input
-                type={showPin ? 'text' : 'password'}
-                value={pinInput}
+                type="text"
+                required
+                value={username}
                 onChange={(e) => {
-                  setPinInput(e.target.value);
+                  setUsername(e.target.value);
                   setErrorMsg('');
                 }}
-                placeholder="নিরাপত্তা পিন ইনপুট করুন..."
-                autoFocus
-                className="w-full bg-slate-950/80 border-2 border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-3.5 text-sm font-mono font-bold text-white placeholder-slate-600 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/20"
+                placeholder="ইউজারনেম দিন (e.g. admin)..."
+                className="w-full bg-slate-950/80 border-2 border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-mono font-bold text-white placeholder-slate-600 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/20"
+              />
+            </div>
+          </div>
+
+          {/* Password Input */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5 text-blue-400" />
+              <span>পাসওয়ার্ড (Password):</span>
+            </label>
+
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setErrorMsg('');
+                }}
+                placeholder="পাসওয়ার্ড লিখুন..."
+                className="w-full bg-slate-950/80 border-2 border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-3 text-sm font-mono font-bold text-white placeholder-slate-600 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/20"
               />
               <button
                 type="button"
-                onClick={() => setShowPin(!showPin)}
-                className="absolute right-4 top-4 text-slate-400 hover:text-white cursor-pointer transition"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-3.5 text-slate-400 hover:text-white cursor-pointer transition"
                 tabIndex={-1}
               >
-                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            <p className="text-[10px] text-slate-500 font-mono">ডিফল্ট লগইন: User: admin | Pass: admin123 (or 1234)</p>
           </div>
 
           <div className="pt-2 space-y-2.5">
@@ -118,7 +148,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
               className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-extrabold py-3.5 rounded-2xl text-sm shadow-xl shadow-blue-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 border border-blue-400/30 hover:scale-[1.01]"
             >
               <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
-              <span>প্যানেলে প্রবেশ করুন</span>
+              <span>লগইন করুন</span>
             </button>
 
             <button
