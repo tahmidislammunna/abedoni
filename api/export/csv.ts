@@ -1,6 +1,56 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase, dbRowToOrder } from '../_lib/supabase';
+import { supabase } from '../_lib/supabase';
 import { BoardChallengeOrder } from '../_lib/types';
+
+function dbRowToOrder(row: any): BoardChallengeOrder {
+  let subjectsArr: string[] = [];
+  if (Array.isArray(row.subjects)) {
+    subjectsArr = row.subjects;
+  } else if (typeof row.subjects === 'string') {
+    try { subjectsArr = JSON.parse(row.subjects); } catch { subjectsArr = []; }
+  }
+
+  let subjectNamesBnArr: string[] = [];
+  if (Array.isArray(row.subject_names_bn)) {
+    subjectNamesBnArr = row.subject_names_bn;
+  } else if (typeof row.subject_names_bn === 'string') {
+    try { subjectNamesBnArr = JSON.parse(row.subject_names_bn); } catch { subjectNamesBnArr = []; }
+  }
+
+  return {
+    id: row.id,
+    receiptId: row.receipt_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    studentName: row.student_name,
+    fatherName: row.father_name || '',
+    motherName: row.mother_name || '',
+    roll: row.roll,
+    reg: row.reg,
+    board: row.board,
+    exam: row.exam || 'SSC',
+    year: Number(row.year || 2026),
+    phone: row.phone,
+    whatsapp: row.whatsapp || row.phone,
+    email: row.email || '',
+    subjects: subjectsArr,
+    subjectNamesBn: subjectNamesBnArr,
+    officialFee: Number(row.official_fee || 0),
+    platformFee: Number(row.platform_fee || 0),
+    totalFee: Number(row.total_fee || 0),
+    paymentMethod: row.payment_method || 'bKash',
+    paymentSenderPhone: row.payment_sender_phone || row.phone,
+    trxId: row.trx_id,
+    paymentStatus: row.payment_status || 'Reviewing',
+    orderStatus: row.order_status || 'Pending',
+    adminNotes: row.admin_notes || '',
+    teletalkSmsCommand1: row.teletalk_sms_command1 || '',
+    boardReply1: row.board_reply1 || '',
+    teletalkPin: row.teletalk_pin || '',
+    teletalkSmsCommand2: row.teletalk_sms_command2 || '',
+    screenshotUrl: row.screenshot_url || '',
+  };
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

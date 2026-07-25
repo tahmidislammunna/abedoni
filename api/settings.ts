@@ -1,6 +1,47 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { fetchAppSettingsFromSupabase, saveAppSettingsToSupabase } from './_lib/supabase';
-import { DEFAULT_APP_SETTINGS } from './_lib/appSettings';
+import { supabase } from './_lib/supabase';
+import { DEFAULT_APP_SETTINGS, AppSettings } from './_lib/appSettings';
+
+async function fetchAppSettingsFromSupabase(): Promise<AppSettings> {
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('settings')
+      .eq('id', 'main')
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Supabase fetchAppSettings warning:', error.message);
+      return DEFAULT_APP_SETTINGS;
+    }
+
+    if (data && data.settings) {
+      return { ...DEFAULT_APP_SETTINGS, ...data.settings };
+    }
+  } catch (err) {
+    console.warn('Failed to fetch app settings from Supabase:', err);
+  }
+  return DEFAULT_APP_SETTINGS;
+}
+
+async function saveAppSettingsToSupabase(newSettings: Partial<AppSettings>): Promise<AppSettings> {
+  const current = await fetchAppSettingsFromSupabase();
+  const updated = { ...current, ...newSettings };
+
+  try {
+    const { error } = await supabase
+      .from('app_settings')
+      .upsert({ id: 'main', settings: updated, updated_at: new Date().toISOString() });
+
+    if (error) {
+      console.error('Supabase saveAppSettings error:', error.message);
+    }
+  } catch (err) {
+    console.error('Failed to save app settings to Supabase:', err);
+  }
+
+  return updated;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
