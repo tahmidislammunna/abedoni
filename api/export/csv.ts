@@ -1,6 +1,68 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { supabase } from '../_lib/supabase';
-import { BoardChallengeOrder } from '../_lib/types';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 
+  process.env.SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL ||
+  'https://ybxquqshnghsdosqiqiu.supabase.co';
+
+const supabaseAnonKey = 
+  process.env.SUPABASE_ANON_KEY ||
+  process.env.VITE_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlieHF1cXNobmdoc2Rvc3FpcWl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ5NjgxMTUsImV4cCI6MjEwMDU0NDExNX0._kV8KqLLqN2p6QzM4wzj4Jkc5_wKlP_-qozJsSVi75c';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+export type EducationBoard = 
+  | 'DHA' | 'RAJ' | 'COM' | 'CTG' | 'BAR' 
+  | 'SYL' | 'DIN' | 'MYM' | 'JES' | 'MAD' | 'TEC';
+
+export type ExamType = 'SSC' | 'DAKHIL' | 'VOCATIONAL';
+
+export type OrderStatus = 
+  | 'Pending' 
+  | 'Payment Verified' 
+  | 'Processing' 
+  | 'SMS Sent' 
+  | 'Completed' 
+  | 'Updated' 
+  | 'Cancelled';
+
+export type PaymentMethod = 'bKash' | 'Nagad' | 'Rocket' | 'Upay';
+
+export interface BoardChallengeOrder {
+  id: string;
+  receiptId: string;
+  createdAt: string;
+  updatedAt: string;
+  studentName: string;
+  fatherName: string;
+  motherName?: string;
+  roll: string;
+  reg: string;
+  board: EducationBoard;
+  exam: ExamType;
+  year: number;
+  phone: string;
+  whatsapp: string;
+  email?: string;
+  subjects: string[];
+  subjectNamesBn?: string[];
+  officialFee: number;
+  platformFee: number;
+  totalFee: number;
+  paymentMethod: PaymentMethod;
+  paymentSenderPhone: string;
+  trxId: string;
+  paymentStatus: 'Paid' | 'Reviewing' | 'Unverified' | 'Failed';
+  orderStatus: OrderStatus;
+  adminNotes?: string;
+  teletalkSmsCommand1?: string;
+  boardReply1?: string;
+  teletalkPin?: string;
+  teletalkSmsCommand2?: string;
+  screenshotUrl?: string;
+}
 
 function dbRowToOrder(row: any): BoardChallengeOrder {
   let subjectsArr: string[] = [];
