@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import confetti from 'canvas-confetti';
 import { 
   CheckCircle2, 
   ArrowRight, 
@@ -36,12 +37,48 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [completedOrder, setCompletedOrder] = useState<BoardChallengeOrder | null>(null);
 
+  // Trigger success confetti animation on reaching receipt step
+  useEffect(() => {
+    if (currentStep === 4) {
+      try {
+        // First confetti cannon
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#2563eb', '#059669', '#d97706', '#7c3aed', '#ec4899', '#3b82f6']
+        });
+        // Dual side burst after 250ms
+        const timer = setTimeout(() => {
+          confetti({
+            particleCount: 80,
+            angle: 60,
+            spread: 60,
+            origin: { x: 0, y: 0.7 },
+            colors: ['#059669', '#10b981', '#34d399', '#f59e0b']
+          });
+          confetti({
+            particleCount: 80,
+            angle: 120,
+            spread: 60,
+            origin: { x: 1, y: 0.7 },
+            colors: ['#2563eb', '#3b82f6', '#60a5fa', '#f59e0b']
+          });
+        }, 250);
+        return () => clearTimeout(timer);
+      } catch (e) {
+        console.error('Confetti animation error:', e);
+      }
+    }
+  }, [currentStep]);
+
   // Form fields (Strictly 5 simple fields as requested)
   const [studentName, setStudentName] = useState('');
   const [board, setBoard] = useState<EducationBoard>('DHA');
   const [roll, setRoll] = useState('');
   const [reg, setReg] = useState('');
   const [phone, setPhone] = useState('');
+  const [isAgreedToTerms, setIsAgreedToTerms] = useState<boolean>(false);
 
   // Selected Subject Codes
   const [selectedSubjectCodes, setSelectedSubjectCodes] = useState<string[]>([]);
@@ -79,6 +116,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
     if (!roll.trim() || roll.length < 5) return 'সঠিক রোল নম্বর দিন।';
     if (!reg.trim() || reg.length < 8) return 'সঠিক রেজিস্ট্রেশন নম্বর দিন।';
     if (!phone.trim() || phone.length < 11) return 'সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন (অফিশিয়াল SMS এর জন্য)।';
+    if (!isAgreedToTerms) return 'অনুগ্রহ করে আবেদনের তথ্য ও অনুমতি বিষয়ক টিক মার্কটিতে টিক দিন।';
     return null;
   };
 
@@ -278,9 +316,9 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
               </div>
             </div>
 
-            {/* 5. মোবাইল নম্বর (অফিশিয়াল SMS এর জন্য) */}
+            {/* 5. মোবাইল নম্বর (অফিশিয়াল SMS ও WhatsApp এর জন্য) */}
             <div>
-              <label className="block font-bold text-slate-800 mb-1">৫. মোবাইল নম্বর * (অফিশিয়াল SMS এর জন্য)</label>
+              <label className="block font-bold text-slate-800 mb-1">৫. মোবাইল নম্বর * (অফিশিয়াল SMS ও WhatsApp আপডেট পেতে)</label>
               <input
                 type="tel"
                 required
@@ -290,9 +328,28 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                 onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                 className="w-full bg-white border border-slate-300 rounded-2xl p-3.5 font-mono font-bold focus:ring-2 focus:ring-blue-500 shadow-xs text-slate-900"
               />
-              <p className="text-[11px] text-slate-500 mt-1">
-                আবেদনের অগ্রগতি ও ফলাফল মেসেজের মাধ্যমে পেতে আপনার সচল মোবাইল নম্বর দিন।
+              <p className="text-[11px] text-slate-500 mt-1 font-bold">
+                আবেদনের অগ্রগতি, অফিশিয়াল মেসেজ ও স্ক্রিনশট প্রুফ পেতে অবশ্যই আপনার সচল হোয়াটসঅ্যাপ (WhatsApp) নম্বর দিন।
               </p>
+            </div>
+
+            {/* Interactive Terms & Authorization Checkbox */}
+            <div className="pt-2">
+              <label className={`flex items-start gap-3 p-4 rounded-2xl border transition cursor-pointer ${
+                isAgreedToTerms 
+                  ? 'bg-blue-50/90 border-blue-300 ring-2 ring-blue-500/20 shadow-2xs' 
+                  : 'bg-amber-50/90 border-amber-300 hover:bg-amber-100/80 shadow-2xs'
+              }`}>
+                <input
+                  type="checkbox"
+                  checked={isAgreedToTerms}
+                  onChange={e => setIsAgreedToTerms(e.target.checked)}
+                  className="w-5 h-5 mt-0.5 text-blue-600 rounded border-slate-300 focus:ring-blue-500 shrink-0 cursor-pointer"
+                />
+                <span className="text-xs sm:text-sm text-slate-900 font-bold leading-relaxed select-none">
+                  আমি নিশ্চিত করছি যে, আমার দেওয়া তথ্য সঠিক এবং আমার পক্ষ থেকে আবেদন করার জন্য আবেদনীকে অনুমতি দিচ্ছি। ভুল তথ্যের কারণে বোর্ডের আবেদন ব্যর্থ হলে প্ল্যাটফর্ম দায়ী থাকবে না।
+                </span>
+              </label>
             </div>
 
           </div>

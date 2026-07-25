@@ -29,15 +29,25 @@ import {
   Sliders,
   HelpCircle,
   Sparkles,
-  LogOut
+  LogOut,
+  Trash2,
+  UserCheck,
+  TrendingUp,
+  UserPlus,
+  Edit,
+  X
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
 import { BOARDS_LIST, generateFirstSmsCommand, generateSecondSmsCommand, replaceTemplateVars } from '../data/boardsAndSubjects';
-import { getAppSettings, saveAppSettings, AppSettings } from '../data/appSettings';
+import { getAppSettings, saveAppSettings, AppSettings, ModeratorUser } from '../data/appSettings';
 
-export const AdminPanel: React.FC = () => {
+interface AdminPanelProps {
+  onLogout?: () => void;
+}
+
+export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
-  const [settingsSubTab, setSettingsSubTab] = useState<'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system'>('branding');
+  const [settingsSubTab, setSettingsSubTab] = useState<'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators'>('branding');
   
   const [orders, setOrders] = useState<BoardChallengeOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,9 +55,58 @@ export const AdminPanel: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [boardFilter, setBoardFilter] = useState<string>('ALL');
   
-  // App Settings State (WordPress-like customizer)
+  // User Role
+  const [adminRole] = useState<string>(() => {
+    return sessionStorage.getItem('abedoni_admin_role') || 'admin';
+  });
+
+  // 10-Minute Inactivity Security Timeout
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
+  const [inactivityMinutesLeft, setInactivityMinutesLeft] = useState<number>(10);
+
+  useEffect(() => {
+    const handleUserActivity = () => {
+      setLastActivity(Date.now());
+    };
+
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'];
+    events.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - lastActivity;
+      const remainingSeconds = Math.max(0, Math.ceil((10 * 60 * 1000 - elapsed) / 1000));
+      setInactivityMinutesLeft(Math.ceil(remainingSeconds / 60));
+
+      if (elapsed >= 10 * 60 * 1000) {
+        sessionStorage.removeItem('abedoni_admin_authed');
+        sessionStorage.removeItem('abedoni_admin_role');
+        if (onLogout) {
+          onLogout();
+        } else {
+          window.location.reload();
+        }
+      }
+    }, 5000);
+
+    return () => {
+      events.forEach(evt => window.removeEventListener(evt, handleUserActivity));
+      clearInterval(timer);
+    };
+  }, [lastActivity, onLogout]);
+
+  // Delete Order Confirmation Popup Modal State
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState<BoardChallengeOrder | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+
+  // App Settings State
   const [appSettings, setAppSettings] = useState<AppSettings>(getAppSettings());
   const [settingsSavedMessage, setSettingsSavedMessage] = useState<string>('');
+
+  // Moderator User Form State
+  const [newModUsername, setNewModUsername] = useState('');
+  const [newModPin, setNewModPin] = useState('');
+  const [newModName, setNewModName] = useState('');
+  const [newModRole, setNewModRole] = useState<'moderator' | 'operator' | 'support'>('moderator');
 
   // Single Dedicated Order Page State
   const [selectedOrder, setSelectedOrder] = useState<BoardChallengeOrder | null>(null);
@@ -56,6 +115,28 @@ export const AdminPanel: React.FC = () => {
   const [adminNoteInput, setAdminNoteInput] = useState<string>('');
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
+
+  // Auto-Extract Teletalk PIN from SMS
+  const extractPinFromSms = (text: string): string | null => {
+    if (!text) return null;
+    const pinMatch = text.match(/(?:PIN|Pin|pin)\s*[:=.-]?\s*([0-9]{5,12})/i);
+    if (pinMatch && pinMatch[1]) {
+      return pinMatch[1];
+    }
+    const numberMatch = text.match(/\b([0-9]{6,10})\b/);
+    if (numberMatch && numberMatch[1]) {
+      return numberMatch[1];
+    }
+    return null;
+  };
+
+  const handleBoardReply1Change = (text: string) => {
+    setBoardReply1Input(text);
+    const pin = extractPinFromSms(text);
+    if (pin) {
+      setInputPin(pin);
+    }
+  };
 
   // Status Change Confirmation Modal State
   const [confirmModalData, setConfirmModalData] = useState<{
@@ -67,6 +148,107 @@ export const AdminPanel: React.FC = () => {
     boardReply1?: string;
     note?: string;
   } | null>(null);
+
+  // Edit Student Order Info State
+  const [editingOrder, setEditingOrder] = useState<BoardChallengeOrder | null>(null);
+  const [editForm, setEditForm] = useState<{
+    studentName: string;
+    roll: string;
+    reg: string;
+    board: EducationBoard;
+    phone: string;
+    whatsapp: string;
+    fatherName: string;
+    motherName: string;
+    trxId: string;
+    paymentSenderPhone: string;
+    paymentMethod: string;
+    totalFee: number;
+    subjects: string;
+  }>({
+    studentName: '',
+    roll: '',
+    reg: '',
+    board: 'DHA',
+    phone: '',
+    whatsapp: '',
+    fatherName: '',
+    motherName: '',
+    trxId: '',
+    paymentSenderPhone: '',
+    paymentMethod: 'bKash',
+    totalFee: 0,
+    subjects: '',
+  });
+  const [isSavingEdit, setIsSavingEdit] = useState<boolean>(false);
+
+  const openEditModal = (order: BoardChallengeOrder, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingOrder(order);
+    setEditForm({
+      studentName: order.studentName || '',
+      roll: order.roll || '',
+      reg: order.reg || '',
+      board: order.board || 'DHA',
+      phone: order.phone || '',
+      whatsapp: order.whatsapp || order.phone || '',
+      fatherName: order.fatherName || '',
+      motherName: order.motherName || '',
+      trxId: order.trxId || '',
+      paymentSenderPhone: order.paymentSenderPhone || order.phone || '',
+      paymentMethod: order.paymentMethod || 'bKash',
+      totalFee: order.totalFee || 0,
+      subjects: (order.subjects || []).join(', '),
+    });
+  };
+
+  const handleSaveEditedOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+    setIsSavingEdit(true);
+
+    const parsedSubjects = editForm.subjects
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    try {
+      const res = await fetch(`/api/orders/${editingOrder.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentName: editForm.studentName,
+          roll: editForm.roll,
+          reg: editForm.reg,
+          board: editForm.board,
+          phone: editForm.phone,
+          whatsapp: editForm.whatsapp,
+          fatherName: editForm.fatherName,
+          motherName: editForm.motherName,
+          trxId: editForm.trxId,
+          paymentSenderPhone: editForm.paymentSenderPhone,
+          paymentMethod: editForm.paymentMethod,
+          totalFee: editForm.totalFee,
+          subjects: parsedSubjects,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setOrders(prev => prev.map(o => o.id === editingOrder.id ? data.order : o));
+        if (selectedOrder?.id === editingOrder.id) {
+          setSelectedOrder(data.order);
+        }
+        setEditingOrder(null);
+      } else {
+        alert('তথ্য আপডেট করতে সমস্যা হয়েছে!');
+      }
+    } catch (err) {
+      alert('নেটওয়ার্ক এরর! আবার চেষ্টা করুন।');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     if (selectedOrder) {
@@ -112,12 +294,44 @@ export const AdminPanel: React.FC = () => {
     setTimeout(() => setCopiedCmd(null), 2000);
   };
 
+  const triggerDeleteOrder = (order: BoardChallengeOrder, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setDeleteConfirmOrder(order);
+  };
+
+  const confirmAndDeleteOrder = async () => {
+    if (!deleteConfirmOrder) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/orders/${deleteConfirmOrder.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setOrders(prev => prev.filter(o => o.id !== deleteConfirmOrder.id));
+        if (selectedOrder?.id === deleteConfirmOrder.id) {
+          setSelectedOrder(null);
+        }
+        setDeleteConfirmOrder(null);
+      } else {
+        alert('আবেদনটি মুছে ফেলতে সমস্যা হয়েছে।');
+      }
+    } catch (err) {
+      alert('নেটওয়ার্ক এরর! আবার চেষ্টা করুন।');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Metrics Calculations
   const totalOrdersCount = orders.length;
   const pendingCount = orders.filter(o => o.orderStatus === 'Pending').length;
   const processingCount = orders.filter(o => o.orderStatus === 'Processing' || o.orderStatus === 'Payment Verified').length;
   const completedCount = orders.filter(o => o.orderStatus === 'Completed').length;
   const totalRevenueBDT = orders.reduce((sum, o) => sum + (o.totalFee || 0), 0);
+
+  // Daily Income Report WITHOUT Board Fee (Pure Platform/Service Fee Revenue)
+  const todayDateStr = new Date().toISOString().split('T')[0];
+  const todayOrders = orders.filter(o => o.createdAt && o.createdAt.startsWith(todayDateStr));
+  const dailyNetIncomeBDT = todayOrders.reduce((sum, o) => sum + (o.platformFee || 99), 0);
+  const totalNetIncomeBDT = orders.reduce((sum, o) => sum + (o.platformFee || 99), 0);
 
   const handleUpdateOrderStatus = async (
     orderId: string, 
@@ -216,54 +430,67 @@ export const AdminPanel: React.FC = () => {
   return (
     <div className="space-y-8 pb-20 font-bn max-w-7xl mx-auto">
       
-      {/* Top Header & Navigation */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+      {/* Top Header & Navigation Bar */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4 mb-2">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              আবেদনী অ্যাডমিন কন্ট্রোল প্যানেল
+              {adminRole === 'moderator' ? 'মডারেটর কন্ট্রোল প্যানেল' : 'আবেদনী অ্যাডমিন কন্ট্রোল প্যানেল'}
             </h1>
-            <span className="bg-slate-900 text-white text-xs px-2.5 py-0.5 rounded-full font-mono font-bold">
-              ADMIN V2.8
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold ${
+              adminRole === 'moderator' ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-white'
+            }`}>
+              {adminRole === 'moderator' ? 'MODERATOR' : 'ADMIN V2.8'}
+            </span>
+
+            {/* Inactivity Auto-Logout Badge */}
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs">
+              <Clock className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+              <span>নিষ্ক্রিয়তা নিরাপত্তা: ১০ মি. ({inactivityMinutesLeft} মি.)</span>
             </span>
           </div>
-          <p className="text-slate-600 text-xs sm:text-sm">
-            SSC Board Challenge 2026 পেমেন্ট ভেরিফিকেশন, টেলিটক অটো-কমান্ড, ওয়াটসঅ্যাপ API এবং ওয়ার্ডপ্রেস-স্টাইল কাস্টমাইজার
+          <p className="text-slate-600 text-xs sm:text-sm mt-1">
+            SSC Board Challenge 2026 পেমেন্ট ভেরিফিকেশন, টেলিটক অটো-কমান্ড, ওয়াটসঅ্যাপ API এবং মডারেটর ইউজার ম্যানেজমেন্ট
           </p>
         </div>
 
-        {/* Tab Switcher (Orders vs Settings) */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-200/80 p-1 rounded-2xl">
+        {/* Tab Switcher & Logout */}
+        <div className="flex items-center gap-2 bg-slate-200/80 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto no-scrollbar shrink-0">
           <button
             onClick={() => { setActiveTab('orders'); setSelectedOrder(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'orders' && !selectedOrder ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-700 hover:text-slate-900'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>অর্ডার রিকোয়েস্ট ({totalOrdersCount})</span>
+            <span>অর্ডার তালিকা ({totalOrdersCount})</span>
           </button>
 
           <button
             onClick={() => { setActiveTab('settings'); setSelectedOrder(null); }}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
               activeTab === 'settings' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-700 hover:text-slate-900'
             }`}
           >
             <Sliders className="w-4 h-4" />
-            <span>ওয়ার্ডপ্রেস সেটিংস কাস্টমাইজার</span>
+            <span>অ্যাপ সেটিংস কাস্টমাইজার</span>
           </button>
 
           <button
             onClick={() => {
               sessionStorage.removeItem('abedoni_admin_authed');
-              window.location.href = '/';
+              sessionStorage.removeItem('abedoni_admin_role');
+              if (onLogout) {
+                onLogout();
+              } else {
+                window.location.href = '/';
+              }
             }}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs ml-auto sm:ml-0"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 ml-auto"
             title="Exit Admin Panel & Log Out"
           >
             <LogOut className="w-4 h-4" />
-            <span>লগআউট / বের হন</span>
+            <span>লগআউট</span>
           </button>
         </div>
       </div>
@@ -284,7 +511,7 @@ export const AdminPanel: React.FC = () => {
               <span>← সকল অর্ডার তালিকায় ফিরে যান</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-slate-500 font-mono">Order ID:</span>
               <span className="text-sm font-black text-blue-700 font-mono bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">
                 {selectedOrder.id}
@@ -292,6 +519,17 @@ export const AdminPanel: React.FC = () => {
               <span className="text-xs font-bold px-3 py-1 rounded-full border bg-amber-100 text-amber-900 border-amber-300">
                 {selectedOrder.adminNotes || 'Written Processing by Abedoni'}
               </span>
+
+              {adminRole !== 'moderator' && (
+                <button
+                  onClick={(e) => triggerDeleteOrder(selectedOrder, e)}
+                  className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-3.5 py-1.5 rounded-xl text-xs transition flex items-center gap-1.5 shadow-xs cursor-pointer ml-2"
+                  title="Delete Order"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>আবেদন ডিলিট</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -303,14 +541,23 @@ export const AdminPanel: React.FC = () => {
               
               {/* Student Application Summary */}
               <div className="bg-white/80 backdrop-blur-2xl p-6 rounded-[32px] border border-white/80 shadow-xl space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-200/80 pb-3">
                   <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-blue-600" />
                     <span>শিক্ষার্থী ও আবেদনের বিবরণ</span>
                   </h2>
-                  <span className="text-xs text-slate-400 font-mono">
-                    তারিখ: {new Date(selectedOrder.createdAt).toLocaleString('bn-BD')}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => openEditModal(selectedOrder, e)}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                      <span>তথ্য এডিট করুন</span>
+                    </button>
+                    <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+                      তারিখ: {new Date(selectedOrder.createdAt).toLocaleString('bn-BD')}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
@@ -401,17 +648,28 @@ export const AdminPanel: React.FC = () => {
 
                 {/* Board Reply 1 Storage Input */}
                 <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                  <label className="text-xs text-slate-300 font-bold block">
-                    শিক্ষা বোর্ড / টেলিটক থেকে ১ম কমান্ডের পর প্রাপ্ত ফিরতি SMS বা রিপ্লাই দিন:
-                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-1">
+                    <label className="text-xs text-slate-300 font-bold block">
+                      শিক্ষা বোর্ড / টেলিটক থেকে ১ম কমান্ডের পর প্রাপ্ত ফিরতি SMS বা রিপ্লাই দিন:
+                    </label>
+                    {extractPinFromSms(boardReply1Input) && (
+                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/90 px-2.5 py-0.5 rounded-lg border border-emerald-700/80 flex items-center gap-1 animate-in fade-in">
+                        <span>✨ অটো-ডিটেক্ট করা পিন:</span>
+                        <strong className="font-mono text-white text-xs">{extractPinFromSms(boardReply1Input)}</strong>
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     rows={2}
                     placeholder="যেমন: You have requested for DHA Roll 142850 Sub 101,107. Total Tk 350 will be charged. PIN 84920153."
                     value={boardReply1Input}
-                    onChange={e => setBoardReply1Input(e.target.value)}
+                    onChange={e => handleBoardReply1Change(e.target.value)}
                     className="w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500"
                   />
-                  <div className="flex justify-end">
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                    <p className="text-[11px] text-slate-400">
+                      💡 টিপস: টেলিটক থেকে প্রাপ্ত ফিরতি SMS পেস্ট করলেই পিন অটো-ডিটেক্ট হয়ে নিচে বসে যাবে!
+                    </p>
                     <button
                       onClick={() => {
                         handleUpdateOrderStatus(
@@ -423,7 +681,7 @@ export const AdminPanel: React.FC = () => {
                           boardReply1Input
                         );
                       }}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
                     >
                       <Save className="w-3.5 h-3.5" />
                       <span>বোর্ড রিপ্লাই মেসেজ সেভ করুন</span>
@@ -431,18 +689,25 @@ export const AdminPanel: React.FC = () => {
                   </div>
                 </div>
 
-                {/* PIN Input */}
+                {/* PIN Input & Save to Confirm */}
                 <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                  <label className="text-xs text-slate-300 font-bold block">
-                    টেলিটক ফেরত পিন নম্বর প্রদান করুন (1st SMS-এ প্রাপ্ত PIN):
-                  </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-slate-300 font-bold block">
+                      টেলিটক ফেরত পিন নম্বর (1st SMS-এ প্রাপ্ত PIN):
+                    </label>
+                    {inputPin && (
+                      <span className="text-[11px] text-blue-400 font-mono font-bold">
+                        PIN: {inputPin}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                     <input
                       type="text"
                       placeholder="যেমন: 84920153"
                       value={inputPin}
                       onChange={e => setInputPin(e.target.value)}
-                      className="w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3 font-mono font-bold text-sm focus:ring-2 focus:ring-emerald-500"
+                      className="w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3 font-mono font-extrabold text-base focus:ring-2 focus:ring-emerald-500"
                     />
                     <button
                       onClick={() => {
@@ -455,33 +720,37 @@ export const AdminPanel: React.FC = () => {
                           adminNoteInput || '১ম এসএমএস পাঠানো সম্পন্ন। পিন সেভ করা হয়েছে।'
                         );
                       }}
-                      className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-3 rounded-xl text-xs shrink-0 transition cursor-pointer"
+                      className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-5 py-3 rounded-xl text-xs shrink-0 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
                     >
-                      পিন সেভ করুন
+                      <CheckCircle className="w-4 h-4 text-blue-200" />
+                      <span>Pin Save to Confirm</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Step 2 Command */}
                 {inputPin && (
-                  <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700 animate-in fade-in">
+                  <div className="space-y-2 bg-emerald-950/70 p-4 rounded-2xl border border-emerald-700/80 animate-in fade-in slide-in-from-top-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-300 font-bold">২য় এসএমএস কনফার্মেশন কমান্ড (TeleTalk 2nd Command):</span>
-                      <span className="text-[10px] text-emerald-400 font-mono">Send to 16222</span>
+                      <span className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>২য় এসএমএস কনফার্মেশন কমান্ড (TeleTalk 2nd Command):</span>
+                      </span>
+                      <span className="text-[10px] text-emerald-300 font-mono font-bold bg-emerald-900 px-2 py-0.5 rounded">Send to 16222</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                       <input
                         type="text"
                         readOnly
                         value={generateSecondSmsCommand(inputPin, selectedOrder.phone)}
-                        className="w-full bg-slate-950 text-emerald-400 border border-slate-700 rounded-xl p-3 font-mono font-bold text-sm"
+                        className="w-full bg-slate-950 text-emerald-300 border border-emerald-700 rounded-xl p-3 font-mono font-black text-base tracking-wide"
                       />
                       <button
                         onClick={() => copyText(generateSecondSmsCommand(inputPin, selectedOrder.phone), 'cmd2')}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-xl text-xs flex items-center gap-1.5 shrink-0 transition cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-5 py-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer shadow-md"
                       >
                         {copiedCmd === 'cmd2' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        <span>{copiedCmd === 'cmd2' ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                        <span>{copiedCmd === 'cmd2' ? 'কপি হয়েছে' : '২য় কমান্ড কপি করুন'}</span>
                       </button>
                     </div>
                   </div>
@@ -694,32 +963,51 @@ export const AdminPanel: React.FC = () => {
         /* 2. ORDERS LIST TABLE VIEW */
         /* ------------------------------------------------------------- */
         <>
-          {/* Metrics Row */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="bg-white/70 backdrop-blur-xl p-5 rounded-3xl border border-white/80 shadow-md space-y-1">
+          {/* Metrics Row & Daily Income Report Without Board Fee */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+            <div className="bg-white/70 backdrop-blur-xl p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/80 shadow-md space-y-1">
               <span className="text-xs text-slate-500 font-bold">মোট আবেদন</span>
-              <p className="text-2xl font-black text-slate-900 font-mono">{totalOrdersCount}</p>
+              <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">{totalOrdersCount}</p>
             </div>
-            <div className="bg-amber-50/80 p-5 rounded-3xl border border-amber-200 shadow-md space-y-1">
+            <div className="bg-amber-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-amber-200 shadow-md space-y-1">
               <span className="text-xs text-amber-800 font-bold">পেন্ডিং আবেদন</span>
-              <p className="text-2xl font-black text-amber-900 font-mono">{pendingCount}</p>
+              <p className="text-xl sm:text-2xl font-black text-amber-900 font-mono">{pendingCount}</p>
             </div>
-            <div className="bg-blue-50/80 p-5 rounded-3xl border border-blue-200 shadow-md space-y-1">
+            <div className="bg-blue-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-blue-200 shadow-md space-y-1">
               <span className="text-xs text-blue-800 font-bold">Processing by Abedoni</span>
-              <p className="text-2xl font-black text-blue-900 font-mono">{processingCount}</p>
+              <p className="text-xl sm:text-2xl font-black text-blue-900 font-mono">{processingCount}</p>
             </div>
-            <div className="bg-emerald-50/80 p-5 rounded-3xl border border-emerald-200 shadow-md space-y-1">
+            <div className="bg-emerald-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-emerald-200 shadow-md space-y-1">
               <span className="text-xs text-emerald-800 font-bold">সম্পন্ন (Completed)</span>
-              <p className="text-2xl font-black text-emerald-900 font-mono">{completedCount}</p>
+              <p className="text-xl sm:text-2xl font-black text-emerald-900 font-mono">{completedCount}</p>
             </div>
-            <div className="bg-slate-900 text-white p-5 rounded-3xl space-y-1 col-span-2 lg:col-span-1 shadow-lg">
-              <span className="text-xs text-slate-400 font-bold">মোট সংগৃহীত ফি</span>
-              <p className="text-2xl font-black text-emerald-400 font-mono">৳{totalRevenueBDT}</p>
+
+            {/* Daily Net Profit Report Card (Without Board Fee) */}
+            <div className="bg-gradient-to-br from-emerald-900 via-slate-900 to-teal-950 text-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl space-y-1 col-span-2 sm:col-span-2 shadow-xl border border-emerald-500/30">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-emerald-300 font-black flex items-center gap-1.5">
+                  <TrendingUp className="w-4 h-4 text-emerald-400" />
+                  <span>দৈনিক নিট ইনকাম (বোর্ড ফি ব্যতীত)</span>
+                </span>
+                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  আজকের লাভ
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between pt-1">
+                <div>
+                  <p className="text-xl sm:text-3xl font-black text-emerald-400 font-mono">৳{dailyNetIncomeBDT} BDT</p>
+                  <p className="text-[10px] text-slate-300">আজকে মোট {todayOrders.length}টি আবেদনের সার্ভিস চার্জ</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-slate-400 block font-bold">সর্বমোট প্ল্যাটফর্ম ফি</span>
+                  <span className="text-sm font-black text-teal-300 font-mono">৳{totalNetIncomeBDT} BDT</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Filters & Export Bar */}
-          <div className="bg-white/70 backdrop-blur-xl p-4 rounded-3xl border border-white/80 shadow-md flex flex-col md:flex-row items-center justify-between gap-3">
+          <div className="bg-white/70 backdrop-blur-xl p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/80 shadow-md flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
@@ -731,11 +1019,11 @@ export const AdminPanel: React.FC = () => {
               />
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 w-full md:w-auto">
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer"
+                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer w-full sm:w-auto"
               >
                 <option value="ALL">সকল স্ট্যাটাস</option>
                 <option value="Pending">Pending</option>
@@ -746,7 +1034,7 @@ export const AdminPanel: React.FC = () => {
               <select
                 value={boardFilter}
                 onChange={e => setBoardFilter(e.target.value)}
-                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer"
+                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer w-full sm:w-auto"
               >
                 <option value="ALL">সকল বোর্ড</option>
                 {BOARDS_LIST.map(b => (
@@ -757,7 +1045,7 @@ export const AdminPanel: React.FC = () => {
               <a
                 href="/api/export/csv"
                 download
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                className="col-span-2 sm:col-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
               >
                 <Download className="w-4 h-4" />
                 <span>CSV রিপোর্ট</span>
@@ -765,8 +1053,98 @@ export const AdminPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Orders Management Table */}
-          <div className="bg-white/80 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-xl overflow-hidden">
+          {/* Mobile Orders Card List (visible on mobile < md) */}
+          <div className="block md:hidden space-y-3">
+            {orders.length === 0 ? (
+              <div className="bg-white p-6 rounded-2xl text-center text-slate-500 font-bold border border-slate-200">
+                কোনো আবেদন পাওয়া যায়নি।
+              </div>
+            ) : (
+              orders.map(ord => (
+                <div 
+                  key={ord.id}
+                  onClick={() => {
+                    setSelectedOrder(ord);
+                    setInputPin(ord.teletalkPin || '');
+                    setAdminNoteInput(ord.adminNotes || '');
+                  }}
+                  className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 hover:border-blue-300 active:bg-blue-50/50 transition cursor-pointer"
+                >
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div>
+                      <span className="font-mono font-black text-blue-700 text-sm">{ord.id}</span>
+                      <span className="text-[10px] text-slate-400 block font-mono">
+                        {new Date(ord.createdAt).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-amber-100 text-amber-900 border-amber-300">
+                      {ord.adminNotes || 'Written Processing by Abedoni'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block">শিক্ষার্থীর নাম</span>
+                      <span className="font-bold text-slate-900">{ord.studentName}</span>
+                      <span className="text-[10px] text-slate-500 font-mono block">{ord.phone}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block">রোল ও বোর্ড</span>
+                      <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">{ord.roll}</span>
+                      <span className="text-blue-700 font-bold block text-[10px]">{ord.board} (Reg: {ord.reg})</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block">বিষয়সমূহ</span>
+                      <span className="font-mono text-slate-700 truncate block text-[11px]">{ord.subjects.join(', ')}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block">ফি ও TrxID</span>
+                      <span className="font-bold text-emerald-700 font-mono">৳{ord.totalFee}</span>
+                      <span className="font-mono text-[10px] text-slate-500 block truncate">{ord.trxId} ({ord.paymentMethod})</span>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOrder(ord);
+                        setInputPin(ord.teletalkPin || '');
+                        setAdminNoteInput(ord.adminNotes || '');
+                      }}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                    >
+                      <span>ম্যানেজ & ডিটেইলস →</span>
+                    </button>
+
+                    <button
+                      onClick={(e) => openEditModal(ord, e)}
+                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 shrink-0"
+                      title="Edit Student Info"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+
+                    {adminRole !== 'moderator' && (
+                      <button
+                        onClick={(e) => triggerDeleteOrder(ord, e)}
+                        className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 border border-rose-300 shrink-0"
+                        title="Delete Order"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Orders Management Table (visible on md and up) */}
+          <div className="hidden md:block bg-white/80 backdrop-blur-2xl rounded-3xl border border-white/80 shadow-xl overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-100/90 text-slate-800 border-b border-slate-200 font-bold">
@@ -831,7 +1209,7 @@ export const AdminPanel: React.FC = () => {
                             {ord.adminNotes || 'Written Processing by Abedoni'}
                           </span>
                         </td>
-                        <td className="p-3.5 text-right space-x-1" onClick={e => e.stopPropagation()}>
+                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
                           <button
                             onClick={() => {
                               setSelectedOrder(ord);
@@ -840,8 +1218,28 @@ export const AdminPanel: React.FC = () => {
                             }}
                             className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
                           >
-                            <span>ম্যানেজ & ডিটেইলস পেজ</span>
+                            <span>ম্যানেজ & ডিটেইলস</span>
                           </button>
+
+                          <button
+                            onClick={(e) => openEditModal(ord, e)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                            title="Edit Student Info"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>এডিট</span>
+                          </button>
+
+                          {adminRole !== 'moderator' && (
+                            <button
+                              onClick={(e) => triggerDeleteOrder(ord, e)}
+                              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                              title="Delete Order"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">ডিলিট</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -883,55 +1281,65 @@ export const AdminPanel: React.FC = () => {
           )}
 
           {/* WordPress Sub-Tabs */}
-          <div className="flex flex-wrap gap-2 border-b border-slate-200/80 pb-2 text-xs font-bold">
+          <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3 my-4 text-xs font-bold overflow-x-auto no-scrollbar w-full">
             <button
               type="button"
               onClick={() => setSettingsSubTab('branding')}
-              className={`px-4 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'branding' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              🎨 ব্র্যান্ডিং ও কন্টেন্ট (Branding & Titles)
+              🎨 ব্র্যান্ডিং ও কন্টেন্ট
             </button>
 
             <button
               type="button"
               onClick={() => setSettingsSubTab('payments')}
-              className={`px-4 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'payments' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              💳 পেমেন্ট ও ফি সেটআপ (Payments & Fees)
+              💳 পেমেন্ট ও ফি সেটআপ
             </button>
 
             <button
               type="button"
               onClick={() => setSettingsSubTab('support')}
-              className={`px-4 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'support' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              📞 হেল্পডেস্ক ও কন্টাক্ট (Support Info)
+              📞 হেল্পডেস্ক ও কন্টাক্ট
             </button>
 
             <button
               type="button"
               onClick={() => setSettingsSubTab('policies')}
-              className={`px-4 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'policies' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              📜 পলিসি ডকুমেন্টস এডিটর (Policies Editor)
+              📜 পলিসি ডকুমেন্টস
             </button>
 
             <button
               type="button"
               onClick={() => setSettingsSubTab('whatsapp')}
-              className={`px-4 py-2 rounded-xl transition ${
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'whatsapp' ? 'bg-emerald-700 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
               }`}
             >
-              💬 WhatsApp অটো-মেসেজ টেমপ্লেট (1-Click Auto Messaging)
+              💬 WhatsApp অটো-মেসেজ
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSettingsSubTab('moderators')}
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
+                settingsSubTab === 'moderators' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              👥 মডারেটর ইউজারগণ
             </button>
           </div>
 
@@ -1272,6 +1680,208 @@ export const AdminPanel: React.FC = () => {
             </div>
           )}
 
+          {/* SUBTAB 6: MODERATOR USERS MANAGEMENT */}
+          {settingsSubTab === 'moderators' && (
+            <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <UserPlus className="w-5 h-5 text-amber-600" />
+                    <span>ওয়েবসাইট মডারেটর ইউজার ম্যানেজমেন্ট</span>
+                  </h3>
+                  <p className="text-slate-500 text-xs mt-0.5">
+                    ওয়েবসাইটের অর্ডারের স্ট্যাটাস আপডেট ও প্রসেসিং এর জন্য নতুন মডারেটর এবং টিম মেম্বার যুক্ত বা পরিচালনা করুন।
+                  </p>
+                </div>
+              </div>
+
+              {/* Form to Create New Moderator */}
+              <div className="bg-amber-50/80 p-5 rounded-2xl border border-amber-200 space-y-4">
+                <h4 className="font-extrabold text-amber-900 text-sm flex items-center gap-1.5">
+                  <UserPlus className="w-4 h-4 text-amber-700" />
+                  <span>নতুন মডারেটর অ্যাকাউন্ট যুক্ত করুন:</span>
+                </h4>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">ইউজারনেম (Username) *</label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: mod_rahim"
+                      value={newModUsername}
+                      onChange={e => setNewModUsername(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2.5 font-mono text-xs focus:ring-2 focus:ring-amber-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">পাসওয়ার্ড / পিন (PIN) *</label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: mod123"
+                      value={newModPin}
+                      onChange={e => setNewModPin(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2.5 font-mono text-xs focus:ring-2 focus:ring-amber-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">পূর্ণ নাম (Full Name)</label>
+                    <input
+                      type="text"
+                      placeholder="যেমন: রহিম হোসেন"
+                      value={newModName}
+                      onChange={e => setNewModName(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs focus:ring-2 focus:ring-amber-500 font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">রোল (Access Role)</label>
+                    <select
+                      value={newModRole}
+                      onChange={e => setNewModRole(e.target.value as any)}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500"
+                    >
+                      <option value="moderator">মডারেটর (Moderator)</option>
+                      <option value="operator">অপারেটর (Operator)</option>
+                      <option value="support">সাপোর্ট এক্সিকিউটিভ (Support)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!newModUsername.trim() || !newModPin.trim()) {
+                        alert('ইউজারনেম এবং পিন/পাসওয়ার্ড আবশ্যক!');
+                        return;
+                      }
+                      const currentMods = appSettings.moderatorUsers || [];
+                      if (currentMods.some(m => m.username.toLowerCase() === newModUsername.trim().toLowerCase())) {
+                        alert('এই ইউজারনেমটি ইতিপূর্বে ব্যবহৃত হয়েছে!');
+                        return;
+                      }
+                      const newMod: ModeratorUser = {
+                        id: 'mod-' + Date.now(),
+                        username: newModUsername.trim().toLowerCase(),
+                        pin: newModPin.trim(),
+                        name: newModName.trim() || 'মডারেটর ইউজার',
+                        role: newModRole,
+                        status: 'active',
+                        createdAt: new Date().toISOString().split('T')[0]
+                      };
+                      const updatedMods = [...currentMods, newMod];
+                      const newSettings = { ...appSettings, moderatorUsers: updatedMods };
+                      setAppSettings(newSettings);
+                      saveAppSettings(newSettings);
+                      setNewModUsername('');
+                      setNewModPin('');
+                      setNewModName('');
+                      alert('নতুন মডারেটর ইউজার সফলভাবে তৈরি করা হয়েছে!');
+                    }}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-extrabold px-6 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-md transition cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>মডারেটর যুক্ত করুন</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* List of Active Moderator Users */}
+              <div className="space-y-3 pt-2">
+                <h4 className="font-extrabold text-slate-900 text-sm flex items-center justify-between">
+                  <span>নিবন্ধিত মডারেটরদের তালিকা:</span>
+                  <span className="text-xs text-slate-500 font-normal">
+                    মোট: {(appSettings.moderatorUsers || []).length} জন
+                  </span>
+                </h4>
+
+                <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-100 text-slate-800 font-bold border-b border-slate-200">
+                      <tr>
+                        <th className="p-3">ইউজারনেম</th>
+                        <th className="p-3">নাম</th>
+                        <th className="p-3">পাসওয়ার্ড / পিন</th>
+                        <th className="p-3">রোল</th>
+                        <th className="p-3">স্ট্যাটাস</th>
+                        <th className="p-3 text-right">অ্যাকশন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {(appSettings.moderatorUsers || []).length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-6 text-center text-slate-500">
+                            কোনো মডারেটর অ্যাকাউন্ট তৈরি করা হয়নি। উপরের ফর্ম থেকে নতুন মডারেটর যোগ করুন।
+                          </td>
+                        </tr>
+                      ) : (
+                        (appSettings.moderatorUsers || []).map((m) => (
+                          <tr key={m.id} className="hover:bg-slate-50 transition">
+                            <td className="p-3 font-mono font-bold text-blue-700">{m.username}</td>
+                            <td className="p-3 font-bold text-slate-900">{m.name}</td>
+                            <td className="p-3 font-mono text-slate-600">{m.pin}</td>
+                            <td className="p-3">
+                              <span className="bg-slate-200 text-slate-800 px-2 py-0.5 rounded text-[11px] font-bold uppercase">
+                                {m.role}
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                m.status === 'active' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-rose-100 text-rose-800 border border-rose-300'
+                              }`}>
+                                {m.status === 'active' ? 'সক্রিয় (Active)' : 'নিষ্ক্রিয় (Inactive)'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const currentMods = appSettings.moderatorUsers || [];
+                                    const updatedMods = currentMods.map(item => 
+                                      item.id === m.id ? { ...item, status: (item.status === 'active' ? 'inactive' : 'active') as 'active' | 'inactive' } : item
+                                    );
+                                    const newSettings = { ...appSettings, moderatorUsers: updatedMods };
+                                    setAppSettings(newSettings);
+                                    saveAppSettings(newSettings);
+                                  }}
+                                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                                    m.status === 'active' ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
+                                  }`}
+                                >
+                                  {m.status === 'active' ? 'ডিঅ্যাক্টিভ করুন' : 'অ্যাক্টিভ করুন'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!window.confirm('আপনি কি নিশ্চিত যে এই মডারেটর ইউজারটি মুছে ফেলতে চান?')) return;
+                                    const currentMods = appSettings.moderatorUsers || [];
+                                    const updatedMods = currentMods.filter(item => item.id !== m.id);
+                                    const newSettings = { ...appSettings, moderatorUsers: updatedMods };
+                                    setAppSettings(newSettings);
+                                    saveAppSettings(newSettings);
+                                  }}
+                                  className="p-1 text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                                  title="Delete Moderator"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
@@ -1337,6 +1947,300 @@ export const AdminPanel: React.FC = () => {
                 {isUpdating ? 'আপডেট হচ্ছে...' : 'হ্যাঁ, নিশ্চিত পরিবর্তন করুন'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Popup Modal */}
+      {deleteConfirmOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl border border-rose-200 shadow-2xl max-w-md w-full p-6 space-y-5 animate-in zoom-in-95 duration-200">
+            
+            <div className="flex items-center gap-3 text-rose-600">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0 border border-rose-200">
+                <Trash2 className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-black text-slate-900">
+                  আবেদন ডিলিট নিশ্চিতকরণ
+                </h3>
+                <p className="text-xs text-rose-600 font-bold">
+                  এই অ্যাকশনটি সম্পূর্ণ স্থায়ী এবং রিকভার করা যাবে না
+                </p>
+              </div>
+            </div>
+
+            {/* Order Details Preview Box */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs space-y-2">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-200 font-mono">
+                <span className="text-slate-500 font-bold">Order ID:</span>
+                <span className="font-extrabold text-blue-700 bg-blue-50 px-2.5 py-0.5 rounded-lg border border-blue-200">
+                  {deleteConfirmOrder.id}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <span className="text-slate-400 block text-[10px]">শিক্ষার্থীর নাম:</span>
+                  <span className="font-bold text-slate-800">{deleteConfirmOrder.studentName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">রোল ও বোর্ড:</span>
+                  <span className="font-bold text-slate-800">{deleteConfirmOrder.roll} ({deleteConfirmOrder.board})</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">মোবাইল নম্বর:</span>
+                  <span className="font-mono font-bold text-slate-800">{deleteConfirmOrder.phone}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px]">মোট ফি:</span>
+                  <span className="font-mono font-extrabold text-emerald-700">৳{deleteConfirmOrder.totalFee} BDT</span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              আপনি কি নিশ্চিত যে Order ID <strong className="font-mono text-slate-900 font-black">{deleteConfirmOrder.id}</strong> এর সম্পূর্ণ আবেদনটি ডাটাবেস থেকে স্থায়ীভাবে মুছে ফেলতে চান?
+            </p>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOrder(null)}
+                className="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                disabled={isDeleting}
+              >
+                বাতিল করুন
+              </button>
+              <button
+                type="button"
+                onClick={confirmAndDeleteOrder}
+                disabled={isDeleting}
+                className="bg-rose-600 hover:bg-rose-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 transition cursor-pointer shadow-md disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>{isDeleting ? 'মুছে ফেলা হচ্ছে...' : 'হ্যাঁ, স্থায়ীভাবে ডিলিট করুন'}</span>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Edit Student Order Information Modal */}
+      {editingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 my-8 font-bn">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <Edit className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    শিক্ষার্থীর তথ্য সম্পাদন ও আপডেট করুন
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono">
+                    Order ID: <span className="font-bold text-blue-600">{editingOrder.id}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingOrder(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Edit Form */}
+            <form onSubmit={handleSaveEditedOrder} className="space-y-4 text-xs sm:text-sm">
+              
+              {/* Student Name */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">শিক্ষার্থীর নাম (Student Name) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.studentName}
+                  onChange={e => setEditForm({ ...editForm, studentName: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Roll, Reg & Board */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">রোল নম্বর (Roll) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.roll}
+                    onChange={e => setEditForm({ ...editForm, roll: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">রেজিস্ট্রেশন নম্বর (Reg) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.reg}
+                    onChange={e => setEditForm({ ...editForm, reg: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">শিক্ষা বোর্ড *</label>
+                  <select
+                    value={editForm.board}
+                    onChange={e => setEditForm({ ...editForm, board: e.target.value as EducationBoard })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  >
+                    {BOARDS_LIST.map(b => (
+                      <option key={b.code} value={b.code}>{b.nameBn}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Phone & WhatsApp */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">মোবাইল নম্বর (Phone) *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editForm.phone}
+                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">হোয়াটসঅ্যাপ (WhatsApp)</label>
+                  <input
+                    type="tel"
+                    value={editForm.whatsapp}
+                    onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Father & Mother Names */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">পিতার নাম (Father's Name)</label>
+                  <input
+                    type="text"
+                    value={editForm.fatherName}
+                    onChange={e => setEditForm({ ...editForm, fatherName: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">মাতার নাম (Mother's Name)</label>
+                  <input
+                    type="text"
+                    value={editForm.motherName}
+                    onChange={e => setEditForm({ ...editForm, motherName: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* Payment Details: TrxID, Sender Phone, Method, Total Fee */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">ট্রানজেকশন ID</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.trxId}
+                    onChange={e => setEditForm({ ...editForm, trxId: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono uppercase font-bold text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">প্রেরক নম্বর</label>
+                  <input
+                    type="text"
+                    value={editForm.paymentSenderPhone}
+                    onChange={e => setEditForm({ ...editForm, paymentSenderPhone: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono font-bold text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">পেমেন্ট মেথড</label>
+                  <select
+                    value={editForm.paymentMethod}
+                    onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-xs"
+                  >
+                    <option value="bKash">bKash</option>
+                    <option value="Nagad">Nagad</option>
+                    <option value="Rocket">Rocket</option>
+                    <option value="Upay">Upay</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-700 text-xs mb-1">মোট ফি (৳)</label>
+                  <input
+                    type="number"
+                    value={editForm.totalFee}
+                    onChange={e => setEditForm({ ...editForm, totalFee: Number(e.target.value) })}
+                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono font-bold text-xs text-emerald-700"
+                  />
+                </div>
+              </div>
+
+              {/* Subject Codes */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">বিষয় কোডসমূহ (কমা দিয়ে আলাদা করুন)</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="যেমন: 101, 107, 108"
+                  value={editForm.subjects}
+                  onChange={e => setEditForm({ ...editForm, subjects: e.target.value })}
+                  className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  বিষয় কোড পরিবর্তন করলে টেলিটক ১ম SMS কমান্ড স্বয়ংক্রিয়ভাবে পুনঃতৈরি হয়ে যাবে।
+                </p>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(null)}
+                  className="px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  disabled={isSavingEdit}
+                >
+                  বাতিল করুন
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-6 py-3 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingEdit ? 'সেভ করা হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
+                </button>
+              </div>
+
+            </form>
+
           </div>
         </div>
       )}

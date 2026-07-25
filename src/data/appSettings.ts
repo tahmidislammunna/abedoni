@@ -1,5 +1,15 @@
 import { fetchAppSettingsFromSupabase, saveAppSettingsToSupabase } from '../lib/supabase';
 
+export interface ModeratorUser {
+  id: string;
+  username: string;
+  pin: string;
+  name: string;
+  role: 'moderator' | 'operator' | 'support';
+  status: 'active' | 'inactive';
+  createdAt: string;
+}
+
 export interface AppSettings {
   siteName: string;
   heroHeadline: string;
@@ -23,6 +33,7 @@ export interface AppSettings {
   termsText?: string;
   refundPolicyText?: string;
   adminPin?: string;
+  moderatorUsers?: ModeratorUser[];
   whatsappTemplateStudentToAdmin?: string;
   whatsappTemplateReceived?: string;
   whatsappTemplateProcessing?: string;
@@ -51,6 +62,17 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   announcementPopupText: '',
   isMaintenanceMode: false,
   adminPin: '1234',
+  moderatorUsers: [
+    {
+      id: 'mod-1',
+      username: 'moderator',
+      pin: 'mod123',
+      name: 'প্রধান মডারেটর (Moderator)',
+      role: 'moderator',
+      status: 'active',
+      createdAt: '2026-01-01'
+    }
+  ],
   whatsappTemplateStudentToAdmin: `আসসালামু আলাইকুম!
 
 আমি আবেদনের ডিজিটাল ট্র্যাকিং বোর্ডে অর্ডার সম্পন্ন করেছি।

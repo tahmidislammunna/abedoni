@@ -183,7 +183,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // PATCH /api/orders/:identifier
   if (req.method === 'PATCH') {
-    const { orderStatus, paymentStatus, teletalkPin, boardReply1, adminNotes } = req.body || {};
+    const { 
+      orderStatus, 
+      paymentStatus, 
+      teletalkPin, 
+      boardReply1, 
+      adminNotes,
+      studentName,
+      fatherName,
+      motherName,
+      roll,
+      reg,
+      board,
+      phone,
+      whatsapp,
+      trxId,
+      paymentSenderPhone,
+      paymentMethod,
+      totalFee,
+      subjects,
+      subjectNamesBn
+    } = req.body || {};
 
     try {
       const { data, error: fetchErr } = await supabase.from('orders').select('*').eq('id', cleanIdentifier).maybeSingle();
@@ -193,9 +213,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const currentOrder = dbRowToOrder(data);
 
+      const finalPhone = phone !== undefined ? phone : currentOrder.phone;
+      const finalPin = teletalkPin !== undefined ? teletalkPin : currentOrder.teletalkPin;
+      const finalBoard = board !== undefined ? board : currentOrder.board;
+      const finalRoll = roll !== undefined ? roll : currentOrder.roll;
+      const finalReg = reg !== undefined ? reg : currentOrder.reg;
+      const finalSubjects = subjects !== undefined ? subjects : currentOrder.subjects;
+
       let updatedSmsCmd2 = currentOrder.teletalkSmsCommand2;
-      if (teletalkPin && teletalkPin.trim() !== '') {
-        updatedSmsCmd2 = generateSecondSmsCommand(teletalkPin.trim(), currentOrder.phone);
+      if (finalPin && finalPin.trim() !== '') {
+        updatedSmsCmd2 = generateSecondSmsCommand(finalPin.trim(), finalPhone);
+      }
+
+      // Generate updated first SMS command if board, roll, reg, or subjects change
+      let updatedSmsCmd1 = currentOrder.teletalkSmsCommand1;
+      if (board !== undefined || roll !== undefined || reg !== undefined || subjects !== undefined) {
+        const subStr = finalSubjects.join(',');
+        updatedSmsCmd1 = `RSC ${finalBoard.trim().toUpperCase()} ${finalRoll.trim()} ${currentOrder.year || 2026} ${finalReg.trim()} ${subStr}`;
       }
 
       const updatedOrder: BoardChallengeOrder = {
@@ -203,10 +237,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         updatedAt: new Date().toISOString(),
         orderStatus: orderStatus || currentOrder.orderStatus,
         paymentStatus: paymentStatus || currentOrder.paymentStatus,
-        teletalkPin: teletalkPin !== undefined ? teletalkPin : currentOrder.teletalkPin,
+        teletalkPin: finalPin,
         boardReply1: boardReply1 !== undefined ? boardReply1 : currentOrder.boardReply1,
+        teletalkSmsCommand1: updatedSmsCmd1,
         teletalkSmsCommand2: updatedSmsCmd2,
         adminNotes: adminNotes !== undefined ? adminNotes : currentOrder.adminNotes,
+        studentName: studentName !== undefined ? studentName : currentOrder.studentName,
+        fatherName: fatherName !== undefined ? fatherName : currentOrder.fatherName,
+        motherName: motherName !== undefined ? motherName : currentOrder.motherName,
+        roll: finalRoll,
+        reg: finalReg,
+        board: finalBoard,
+        phone: finalPhone,
+        whatsapp: whatsapp !== undefined ? whatsapp : (phone || currentOrder.whatsapp),
+        trxId: trxId !== undefined ? trxId : currentOrder.trxId,
+        paymentSenderPhone: paymentSenderPhone !== undefined ? paymentSenderPhone : currentOrder.paymentSenderPhone,
+        paymentMethod: paymentMethod !== undefined ? paymentMethod : currentOrder.paymentMethod,
+        totalFee: totalFee !== undefined ? Number(totalFee) : currentOrder.totalFee,
+        subjects: finalSubjects,
+        subjectNamesBn: subjectNamesBn !== undefined ? subjectNamesBn : currentOrder.subjectNamesBn,
       };
 
       const dbRow = orderToDbRow(updatedOrder);
@@ -218,11 +267,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(200).json({
         success: true,
-        message: 'অর্ডার স্ট্যাটাস আপডেট হয়েছে',
+        message: 'অর্ডার তথ্য সফলভাবে আপডেট হয়েছে',
         order: updatedOrder,
       });
     } catch (err) {
       return res.status(500).json({ error: 'আপডেট করতে ব্যর্থ হয়েছে' });
+    }
+  }
+
+  // DELETE /api/orders/:identifier
+  if (req.method === 'DELETE') {
+    try {
+      const { error } = await supabase.from('orders').delete().eq('id', cleanIdentifier);
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+      return res.status(200).json({ success: true, message: 'আবেদনটি সফলভাবে ডিলিট করা হয়েছে' });
+    } catch (err) {
+      return res.status(500).json({ error: 'ডিলিট করতে সমস্যা হয়েছে' });
     }
   }
 

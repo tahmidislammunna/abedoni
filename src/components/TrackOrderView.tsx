@@ -86,7 +86,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
           আবেদনের বর্তমান স্ট্যাটাস দেখুন
         </h1>
         <p className="text-slate-600 text-xs sm:text-sm">
-          আপনার Order ID (যেমন: ABD-2026-10842), রোল নম্বর বা মোবাইল নম্বর দিয়ে সার্চ করুন।
+          আপনার Order ID (যেমন: ABD-2026-10842) অথবা এসএসসি রোল নম্বর দিয়ে সার্চ করুন।
         </p>
       </div>
 
@@ -97,7 +97,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
           <input
             type="text"
             required
-            placeholder="Order ID / Roll / Phone / TrxID"
+            placeholder="Order ID অথবা রোল নম্বর দিয়ে সার্চ করুন"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             className="w-full bg-white/80 border border-slate-300 rounded-2xl pl-11 pr-4 py-3.5 text-sm font-mono focus:ring-2 focus:ring-blue-500 shadow-sm"

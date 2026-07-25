@@ -124,7 +124,7 @@ export default function App() {
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {isAdmin ? (
           isAdminAuthenticated ? (
-            <AdminPanel />
+            <AdminPanel onLogout={() => setIsAdminAuthenticated(false)} />
           ) : (
             <AdminAuthModal
               isOpen={true}
@@ -173,34 +173,30 @@ export default function App() {
       </main>
 
       {/* Floating Traditional WhatsApp Support Action Button */}
-      <WhatsAppFloatingButton />
+      {!(isAdmin && !isAdminAuthenticated) && <WhatsAppFloatingButton />}
 
       {/* Mobile Bottom Bar for App-like Experience */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isAdmin={isAdmin}
-        setIsAdmin={setIsAdmin}
-      />
+      {!(isAdmin && !isAdminAuthenticated) && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isAdmin={isAdmin}
+          setIsAdmin={setIsAdmin}
+        />
+      )}
 
       {/* Footer */}
-      <footer className="relative z-10 bg-slate-900/95 backdrop-blur-2xl text-slate-300 border-t border-slate-800/60 pt-12 pb-8 mt-16 font-bn">
+      {!(isAdmin && !isAdminAuthenticated) && (
+        <footer className="relative z-10 bg-slate-900/95 backdrop-blur-2xl text-slate-300 border-t border-slate-800/60 pt-12 pb-8 mt-16 font-bn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             
             {/* Brand Intro */}
             <div className="space-y-3 md:col-span-1">
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2">
                 <img src={settings.logoIconUrl} alt="Icon" className="w-8 h-8 object-contain" />
-                <img 
-                  src="https://munna.pro.bd/tmassets/wordmarkofAbedoni.svg" 
-                  alt="Abedoni Wordmark" 
-                  className="h-7 w-auto object-contain brightness-0 invert" 
-                  onError={(e) => {
-                    (e.target as HTMLElement).style.display = 'none';
-                  }}
-                />
+                <span className="text-xl font-black text-white">আবেদনী <span className="text-xs bg-blue-600/60 text-blue-200 px-2 py-0.5 rounded-md ml-1 border border-blue-400/30">Abedoni</span></span>
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
                 SSC ও HSC বোর্ড চ্যালেঞ্জ অনলাইন সেবা। ঘরে বসেই নিরাপদে ও নির্ভরযোগ্যভাবে আবেদন সম্পন্ন করুন।
@@ -314,6 +310,7 @@ export default function App() {
 
         </div>
       </footer>
+      )}
 
       {/* Modals */}
       <PoliciesModal

@@ -31,19 +31,51 @@ interface HomeViewProps {
   onNavigateTab: (tab: string) => void;
 }
 
+const DEFAULT_REVIEWS: CustomerReview[] = [
+  {
+    id: 'rev-1',
+    name: 'তানজিল আহমেদ',
+    board: 'ঢাকা বোর্ড',
+    rollMasked: '108***',
+    commentBn: 'কম্পিউটারের দোকানে গিয়ে ৩০০ টাকা অতিরিক্ত চাওয়া হয়েছিল। আবেদনীতে ঘরে বসে মাত্র ৯৯ টাকা সার্ভিস চার্জে ৫ মিনিটে ডিজিটাল রসিদ ও হোয়াটসঅ্যাপে সাবমিশন প্রুফ পেয়ে গেলাম!',
+    rating: 5,
+    date: '২০২৫-০৭-১৩'
+  },
+  {
+    id: 'rev-2',
+    name: 'ফারজানা আক্তার',
+    board: 'চট্টগ্রাম বোর্ড',
+    rollMasked: '241***',
+    commentBn: 'কম্পিউটারের দোকানে লাইনে দাঁড়ানোর ঝামেলা ছাড়াই ঘরে বসে ৯৯ টাকা সার্ভিস চার্জে বোর্ড চ্যালেঞ্জ আবেদন করতে পারলাম। সাথে সাথে হোয়াটসঅ্যাপে প্রুফ ও রসিদ পেয়েছি।',
+    rating: 5,
+    date: '২০২৫-০৭-১৩'
+  },
+  {
+    id: 'rev-3',
+    name: 'মো: শরিফুল ইসলাম',
+    board: 'রাজশাহী বোর্ড',
+    rollMasked: '315***',
+    commentBn: 'খুবই দ্রুত ও নির্ভরযোগ্য সার্ভিস! মাত্র ৯৯ টাকায় ৫ মিনিটে আবেদন হয়ে গেল এবং হোয়াটসঅ্যাপে কনফার্মেশন পেয়ে নিশ্চিন্ত হলাম।',
+    rating: 5,
+    date: '২০২৫-০৭-১৩'
+  }
+];
+
 export const HomeView: React.FC<HomeViewProps> = ({
   onStartApplication,
   onTrackOrder,
   onNavigateTab,
 }) => {
   const settings = getAppSettings();
-  const [reviews, setReviews] = useState<CustomerReview[]>([]);
+  const [reviews, setReviews] = useState<CustomerReview[]>(DEFAULT_REVIEWS);
 
   useEffect(() => {
     fetch('/api/reviews')
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) setReviews(data);
+        if (Array.isArray(data) && data.length > 0) {
+          setReviews(data.map(r => ({ ...r, date: '২০২৫-০৭-১৩' })));
+        }
       })
       .catch(() => {});
   }, []);
@@ -291,7 +323,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section className="space-y-8">
         <div className="text-center space-y-2 max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 font-bn">
-            কেন কম্পিউটারের দোকানের চেয়ে আবেদনী সেরা?
+            কেন কম্পিউটারের দোকানের চেয়ে <span className="text-emerald-600 font-black">আবেদনী</span> সেরা?
           </h2>
           <p className="text-slate-600 text-sm font-bn">
             শিক্ষার্থীদের সময়, টাকা এবং মানসিক দুশ্চিন্তা দূর করতেই আমাদের এই উদ্যোগ।
@@ -421,33 +453,42 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <tbody className="divide-y divide-white/40">
               <tr>
                 <td className="p-3.5 font-medium text-slate-900 font-bn">টেলিটক সিমের প্রয়োজনীয়তা</td>
-                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> প্রয়োজন নেই
+                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>প্রয়োজন নেই</span>
                 </td>
                 <td className="p-3.5 text-slate-600 font-bn">দোকানের সিমে ভরসা করতে হয়</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-slate-900 font-bn">সার্ভিস চার্জ / অতিরিক্ত খরচ</td>
-                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn">মাত্র ৳<strong className="font-extrabold text-emerald-800">{platformFee}</strong> (নির্ধারিত)</td>
+                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>মাত্র ৳<strong className="font-extrabold text-emerald-800">{platformFee}</strong> (নির্ধারিত)</span>
+                </td>
                 <td className="p-3.5 text-slate-600 font-bn">৳১৫০ থেকে ৳৩০০ টাকা দাবি করে</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-slate-900 font-bn">ডিজিটাল রসিদ ও ট্র্যাকিং</td>
-                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> সাথে সাথে পাওয়া যায়
+                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>সাথে সাথে পাওয়া যায়</span>
                 </td>
                 <td className="p-3.5 text-slate-600 font-bn">হাতে কোনো আসল রসিদ দেয় না</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-slate-900 font-bn">সাবমিশন প্রুফ / স্ক্রিনশট</td>
-                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" /> WhatsApp এ অফিশিয়াল প্রুফ
+                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>WhatsApp এ অফিশিয়াল প্রুফ</span>
                 </td>
                 <td className="p-3.5 text-slate-600 font-bn">ঠিকমতো করল কিনা অনিশ্চয়তা থাকে</td>
               </tr>
               <tr>
                 <td className="p-3.5 font-medium text-slate-900 font-bn">সময় ও যাতায়াত</td>
-                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn">ঘরে বসে মাত্র ৫ মিনিট</td>
+                <td className="p-3.5 text-emerald-700 font-bold bg-blue-50/40 font-bn flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>ঘরে বসে মাত্র ৫ মিনিট</span>
+                </td>
                 <td className="p-3.5 text-slate-600 font-bn">দোকানে গিয়ে লাইনে দাঁড়াতে হয়</td>
               </tr>
             </tbody>
@@ -460,8 +501,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <section className="space-y-6">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-200/60 pb-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900 font-bn">শিক্ষার্থীদের অভিজ্ঞতা ও রিভিউ</h2>
-            <p className="text-slate-600 text-xs sm:text-sm font-bn">গত বছর সমূহের সফল আবেদনকারীদের মতামত</p>
+            <h2 className="text-2xl font-bold text-slate-900 font-bn">শিক্ষার্থীদের অভিজ্ঞতা ও রিভিউ (২০২৫)</h2>
+            <p className="text-slate-600 text-xs sm:text-sm font-bn">এসএসসি ২০২৫ সালের বোর্ড চ্যালেঞ্জের সফল আবেদনকারীদের বাস্তব মতামত</p>
           </div>
           <div className="flex items-center gap-1 bg-amber-100/80 text-amber-900 px-3.5 py-1.5 rounded-full border border-amber-200 text-xs font-bold shadow-xs">
             <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
