@@ -37,8 +37,8 @@ export const PricingView: React.FC<PricingViewProps> = ({ onStartApplication }) 
             ৳
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">শিক্ষা বোর্ডের অফিশিয়াল ফি</h3>
-            <p className="text-slate-500 text-xs mt-1">সবগুলো শিক্ষা বোর্ডের নির্ধারিত ফি</p>
+            <h3 className="text-lg font-bold text-slate-900">শিক্ষা বোর্ড নির্ধারিত ফি</h3>
+            <p className="text-slate-500 text-xs mt-1">সবগুলো শিক্ষা বোর্ডের নির্ধারিত মূল ফি</p>
           </div>
           
           <div className="text-2xl sm:text-3xl font-black text-blue-700 font-mono">
@@ -52,7 +52,7 @@ export const PricingView: React.FC<PricingViewProps> = ({ onStartApplication }) 
             </li>
             <li className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>বোর্ডের সরাসরি অফিশিয়াল ফি</span>
+              <span>শিক্ষা বোর্ড কর্তৃক ধার্যকৃত ফি</span>
             </li>
           </ul>
         </div>
@@ -63,8 +63,8 @@ export const PricingView: React.FC<PricingViewProps> = ({ onStartApplication }) 
             ✉️
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">টেলিটক SMS ফি</h3>
-            <p className="text-slate-500 text-xs mt-1">অফিশিয়াল সিস্টেম কমান্ড SMS চার্জ</p>
+            <h3 className="text-lg font-bold text-slate-900">টেলিটক SMS চার্জ</h3>
+            <p className="text-slate-500 text-xs mt-1">সিস্টেম কোড প্রেরণের টেলিকম ফি</p>
           </div>
           
           <div className="text-2xl sm:text-3xl font-black text-amber-700 font-mono">

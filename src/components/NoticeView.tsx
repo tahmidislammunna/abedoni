@@ -20,13 +20,13 @@ export const NoticeView: React.FC = () => {
     <div className="max-w-3xl mx-auto space-y-8 pb-16 font-bn">
       <div className="text-center space-y-2">
         <span className="bg-amber-100 text-amber-900 text-xs font-bold px-3 py-1 rounded-full border border-amber-200">
-          অফিসিয়াল আপডেট
+          সর্বশেষ নোটিশ ও সময়সীমা
         </span>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900">
           বোর্ড চ্যালেঞ্জ নোটিশ বোর্ড
         </h1>
         <p className="text-slate-600 text-sm">
-          শিক্ষা বোর্ড সমূহের সাম্প্রতিক সময়সীমা, দিকনির্দেশনা ও অফিশিয়াল বিজ্ঞপ্তি
+          শিক্ষা বোর্ড সমূহের সাম্প্রতিক সময়সীমা, সংবাদ ও গুরুত্বপূর্ণ দিকনির্দেশনা
         </p>
       </div>
 

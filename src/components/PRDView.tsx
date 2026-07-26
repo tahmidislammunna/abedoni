@@ -72,7 +72,7 @@ export const PRDView: React.FC<PRDViewProps> = ({ isOpen, onClose }) => {
             <h3 className="font-bold text-slate-900 text-base">3. User Flow & State Machine</h3>
             <div className="bg-slate-900 text-slate-200 p-4 rounded-2xl font-mono text-xs overflow-x-auto space-y-1">
               <p>Facebook / Web Search ➔ Abedoni Portal ➔ Student Details (Board, Roll, Reg)</p>
-              <p>➔ Subject Selection ➔ Live Auto Fee Calculation (Official Fee + ৳80 Platform Fee)</p>
+              <p>➔ Subject Selection ➔ Live Auto Fee Calculation (Board Fee + Platform Fee)</p>
               <p>➔ bKash/Nagad Payment ➔ Digital Receipt + WhatsApp Auto-Message</p>
               <p>➔ Admin TeleTalk Panel ➔ 1-Click Copy TeleTalk SMS 1 ➔ PIN Receipt ➔ 1-Click Copy TeleTalk SMS 2</p>
               <p>➔ Board Submission Verified ➔ Live WhatsApp Screenshot Delivery ➔ Status: COMPLETED</p>

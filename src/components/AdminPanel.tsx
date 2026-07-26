@@ -516,8 +516,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               <span className="text-sm font-black text-blue-700 font-mono bg-blue-50 px-3 py-1 rounded-xl border border-blue-200">
                 {selectedOrder.id}
               </span>
-              <span className="text-xs font-bold px-3 py-1 rounded-full border bg-amber-100 text-amber-900 border-amber-300">
-                {selectedOrder.adminNotes || 'Written Processing by Abedoni'}
+              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                selectedOrder.orderStatus === 'Cancelled' || selectedOrder.paymentStatus === 'Unverified' || selectedOrder.paymentStatus === 'Failed'
+                  ? 'bg-rose-100 text-rose-900 border-rose-300 font-extrabold'
+                  : 'bg-amber-100 text-amber-900 border-amber-300'
+              }`}>
+                {selectedOrder.adminNotes || (selectedOrder.orderStatus === 'Cancelled' ? 'আবেদন বাতিল / পেমেন্ট ইস্যু' : 'Written Processing by Abedoni')}
               </span>
 
               {adminRole !== 'moderator' && (
@@ -1077,8 +1081,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                         {new Date(ord.createdAt).toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full border bg-amber-100 text-amber-900 border-amber-300">
-                      {ord.adminNotes || 'Written Processing by Abedoni'}
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                      ord.orderStatus === 'Cancelled' || ord.paymentStatus === 'Unverified' || ord.paymentStatus === 'Failed'
+                        ? 'bg-rose-100 text-rose-900 border-rose-300 font-extrabold'
+                        : 'bg-amber-100 text-amber-900 border-amber-300'
+                    }`}>
+                      {ord.adminNotes || (ord.orderStatus === 'Cancelled' ? 'বাতিলকৃত' : 'Written Processing by Abedoni')}
                     </span>
                   </div>
 
@@ -1205,8 +1213,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                           <span className="font-mono text-[10px] text-slate-500">{ord.trxId} ({ord.paymentMethod})</span>
                         </td>
                         <td className="p-3.5">
-                          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full border bg-amber-100 text-amber-900 border-amber-300 inline-block">
-                            {ord.adminNotes || 'Written Processing by Abedoni'}
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border inline-block ${
+                            ord.orderStatus === 'Cancelled' || ord.paymentStatus === 'Unverified' || ord.paymentStatus === 'Failed'
+                              ? 'bg-rose-100 text-rose-900 border-rose-300 font-extrabold'
+                              : 'bg-amber-100 text-amber-900 border-amber-300'
+                          }`}>
+                            {ord.adminNotes || (ord.orderStatus === 'Cancelled' ? 'বাতিলকৃত' : 'Written Processing by Abedoni')}
                           </span>
                         </td>
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>

@@ -640,7 +640,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                     <span className="font-extrabold text-blue-700 text-lg">আবেদনী</span>
                     <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded">Digital Receipt</span>
                   </div>
-                  <p className="text-[10px] text-slate-500">SSC Board Challenge Official Portal</p>
+                  <p className="text-[10px] text-slate-500">SSC Board Challenge Service Portal • 2026</p>
                 </div>
               </div>
               <div className="text-right">

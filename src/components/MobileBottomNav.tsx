@@ -15,7 +15,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   setIsAdmin
 }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] px-2 py-1.5 font-bn">
+    <div className="xl:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-2xl border-t border-slate-200/80 shadow-[0_-8px_20px_rgba(0,0,0,0.08)] px-2 py-1.5 font-bn">
       <div className="flex items-center justify-around">
         <button
           onClick={() => { setActiveTab('home'); setIsAdmin(false); }}

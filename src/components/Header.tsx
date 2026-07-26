@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
           ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা
         </span>
         <span className="hidden sm:inline text-white/50">•</span>
-        <span className="truncate">SSC Board Challenge 2026 আবেদনের পোর্টালে সরাসরি ফি পরিশোধ করুন</span>
+        <span className="truncate">SSC Board Challenge 2026 ঘরে বসেই সহজ ও দ্রুত আবেদন প্রসেসিং ডিজিটাল সেবা</span>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

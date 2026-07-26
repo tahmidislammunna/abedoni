@@ -17,11 +17,13 @@ import { PRDView } from './components/PRDView';
 import { BoardChallengeOrder } from './types';
 import { getAppSettings, syncAppSettingsWithSupabase } from './data/appSettings';
 import { getWhatsappDirectUrl } from './data/boardsAndSubjects';
+import { trackPageView } from './lib/analytics';
 import { 
   Heart, 
   MessageSquare, 
   Sparkles,
-  BookOpen
+  BookOpen,
+  AlertTriangle
 } from 'lucide-react';
 
 function getTabFromPath(pathname: string): string {
@@ -144,21 +146,37 @@ export default function App() {
     window.addEventListener('popstate', handleUrlCheck);
     return () => window.removeEventListener('popstate', handleUrlCheck);
   }, []);
+
+  // GA4 Page View Tracking on Route / Tab Changes
+  React.useEffect(() => {
+    const currentPath = isAdmin ? '/admin-munna' : getPathFromTab(activeTab);
+    const titleMap: Record<string, string> = {
+      'home': 'হোম - আবেদনী',
+      'apply': 'আবেদন করুন - আবেদনী',
+      'track': 'আবেদন ট্র্যাক - আবেদনী',
+      'pricing': 'সার্ভিস চার্জ ও তথ্য - আবেদনী',
+      'notice': 'নোটিশ - আবেদনী',
+      'faq': 'প্রশ্নোত্তর - আবেদনী',
+      'about': 'আমাদের সম্পর্কে - আবেদনী',
+    };
+    const pageTitle = isAdmin ? 'অ্যাডমিন প্যানেল - আবেদনী' : (titleMap[activeTab] || 'আবেদনী');
+    trackPageView(currentPath, pageTitle);
+  }, [activeTab, isAdmin]);
   
   // Policy Modal state
   const [showPolicies, setShowPolicies] = useState<boolean>(false);
-  const [policyType, setPolicyType] = useState<'privacy' | 'terms' | 'refund'>('privacy');
+  const [policyType, setPolicyType] = useState<'privacy' | 'terms' | 'refund' | 'disclaimer'>('disclaimer');
+
+  const openPolicy = (type: 'privacy' | 'terms' | 'refund' | 'disclaimer') => {
+    setPolicyType(type);
+    setShowPolicies(true);
+  };
 
   // Tracked order reference
   const [latestOrderId, setLatestOrderId] = useState<string | undefined>(undefined);
 
   const handleOrderCompleted = (order: BoardChallengeOrder) => {
     setLatestOrderId(order.id);
-  };
-
-  const openPolicy = (type: 'privacy' | 'terms' | 'refund') => {
-    setPolicyType(type);
-    setShowPolicies(true);
   };
 
   return (
@@ -322,19 +340,25 @@ export default function App() {
 
             {/* Policies & System */}
             <div className="space-y-2 text-xs">
-              <h4 className="font-bold text-white text-sm">নীতিমালা</h4>
+              <h4 className="font-bold text-white text-sm">আইনি তথ্য ও নীতিমালা</h4>
               <ul className="space-y-1.5">
                 <li>
-                  <button onClick={() => openPolicy('privacy')} className="hover:text-white transition">গোপনীয়তা নীতি (Privacy Policy)</button>
+                  <button onClick={() => openPolicy('disclaimer')} className="text-amber-400 hover:text-amber-300 font-bold transition flex items-center gap-1 cursor-pointer">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>আইনি ঘোষণা (Disclaimer)</span>
+                  </button>
                 </li>
                 <li>
-                  <button onClick={() => openPolicy('terms')} className="hover:text-white transition">ব্যবহারের শর্তাবলী (Terms of Service)</button>
+                  <button onClick={() => openPolicy('terms')} className="hover:text-white transition cursor-pointer">ব্যবহারের শর্তাবলী (Terms of Service)</button>
                 </li>
                 <li>
-                  <button onClick={() => openPolicy('refund')} className="hover:text-white transition">রিফান্ড পলিসি (Refund Policy)</button>
+                  <button onClick={() => openPolicy('privacy')} className="hover:text-white transition cursor-pointer">গোপনীয়তা নীতি (Privacy Policy)</button>
+                </li>
+                <li>
+                  <button onClick={() => openPolicy('refund')} className="hover:text-white transition cursor-pointer">রিফান্ড পলিসি (Refund Policy)</button>
                 </li>
                 <li className="pt-2">
-                  <button onClick={() => setShowPRD(true)} className="text-slate-400 hover:text-slate-300 flex items-center gap-1 text-[11px]">
+                  <button onClick={() => setShowPRD(true)} className="text-slate-400 hover:text-slate-300 flex items-center gap-1 text-[11px] cursor-pointer">
                     <BookOpen className="w-3 h-3" />
                     <span>কারিগরি নথি (PRD)</span>
                   </button>
@@ -342,6 +366,17 @@ export default function App() {
               </ul>
             </div>
 
+          </div>
+
+          {/* Non-Affiliation Disclaimer Banner */}
+          <div className="bg-slate-950/80 p-3.5 sm:p-4 rounded-2xl border border-slate-800 text-[11px] text-slate-400 leading-relaxed font-bn space-y-1">
+            <p className="font-bold text-amber-400 flex items-center gap-1.5 text-xs">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+              <span>স্বাতন্ত্র্য ও আইনি ঘোষণা (Non-Affiliation Notice):</span>
+            </p>
+            <p>
+              আবেদনী (Abedoni) একটি সম্পূর্ণ স্বাধীন ডিজিটাল আবেদন সহায়তাকারী প্ল্যাটফর্ম। আমরা কোনো সরকারি বিভাগ, মাধ্যমিক ও উচ্চমাধ্যমিক শিক্ষা বোর্ড (ঢাকা, রাজশাহী, চট্টগ্রাম, কুমিল্লা ইত্যাদি) কিংবা টেলিটক বাংলাদেশ লিমিটেডের অনুমোদিত বা অফিসিয়াল অঙ্গপ্রতিষ্ঠান নই। আমরা শিক্ষার্থীদের প্রদত্ত তথ্য অনুযায়ী কারিগরি উপায়ে বোর্ড চ্যালেঞ্জ আবেদন প্রক্রিয়ায় সহায়তা প্রদান করি।
+            </p>
           </div>
 
           <div className="border-t border-slate-800 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">

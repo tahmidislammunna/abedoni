@@ -29,7 +29,7 @@ export const FAQView: React.FC = () => {
   const getDynamicAnswer = (faq: FAQItem) => {
     if (faq.questionBn.includes('কত টাকা খরচ')) {
       const sampleTotal = boardFee + smsFee + platformFee;
-      return `শিক্ষা বোর্ডের অফিশিয়াল ফি প্রতি বিষয়ের জন্য ৳${boardFee} এবং সিস্টেম SMS ফি ৳${smsFee}। আবেদনী প্ল্যাটফর্মের সার্ভিস চার্জ প্রতি অ্যাপ্লিকেশনে মাত্র ৳${platformFee}। উদাহরণস্বরূপ: ১টি বিষয়ের মোট খরচ ৳${boardFee} + ৳${smsFee} + ৳${platformFee} = ৳${sampleTotal}।`;
+      return `শিক্ষা বোর্ড নির্ধারিত ফি প্রতি বিষয়ের জন্য ৳${boardFee} এবং সিস্টেম SMS ফি ৳${smsFee}। আবেদনী প্ল্যাটফর্মের সার্ভিস চার্জ প্রতি অ্যাপ্লিকেশনে মাত্র ৳${platformFee}। উদাহরণস্বরূপ: ১টি বিষয়ের মোট খরচ ৳${boardFee} + ৳${smsFee} + ৳${platformFee} = ৳${sampleTotal}।`;
     }
     return faq.answerBn;
   };

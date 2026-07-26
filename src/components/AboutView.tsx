@@ -70,8 +70,8 @@ export const AboutView: React.FC = () => {
       </div>
 
       {/* Contact Info */}
-      <div className="bg-blue-600 text-white rounded-3xl p-8 space-y-4">
-        <h3 className="text-xl font-bold">যোগাযোগের ঠিকানা ও সাপোর্ট</h3>
+      <div className="bg-blue-600 text-white rounded-3xl p-8 space-y-4 shadow-lg">
+        <h3 className="text-xl font-bold">যোগাযোগের ঠিকানা ও কাস্টমার সাপোর্ট</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs font-mono">
           <div className="flex items-center gap-2">
             <PhoneCall className="w-4 h-4 text-emerald-300" />
@@ -86,6 +86,17 @@ export const AboutView: React.FC = () => {
             <span>Dhaka, Bangladesh</span>
           </div>
         </div>
+      </div>
+
+      {/* Non-Affiliation Disclaimer Box */}
+      <div className="bg-amber-50 border border-amber-200/80 p-6 rounded-3xl space-y-2 text-amber-950 text-xs sm:text-sm">
+        <h4 className="font-extrabold text-amber-900 text-sm flex items-center gap-2">
+          <span>⚠️</span>
+          <span>আইনি স্বাতন্ত্র্য বার্তা (Non-Affiliation Disclaimer)</span>
+        </h4>
+        <p className="leading-relaxed">
+          আবেদনী (Abedoni) একটি বেসরকারি অনলাইন সেবা প্রদানকারী উদ্যোগ। এটি কোনো সরকারি সংস্থা, মাধ্যমিক ও উচ্চমাধ্যমিক শিক্ষা বোর্ড কিংবা টেলিটক বাংলাদেশ লিমিটেডের অফিসিয়াল ওয়েবসাইট নয়। আমাদের মূল উদ্দেশ্য হলো জটিল বা ঝামেলাপূর্ণ ডিজিটাল আবেদন প্রক্রিয়াকে শিক্ষার্থীদের কাছে সহজ ও দ্রুত করে তোলা।
+        </p>
       </div>
 
     </div>
