@@ -179,12 +179,10 @@ export const Header: React.FC<HeaderProps> = ({
               href="https://abedoni-bd.vercel.app" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs font-bold border border-blue-200 transition-all flex items-center gap-1 shrink-0 hover:scale-105 active:scale-95 shadow-2xs"
+              className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs font-bold border border-blue-200 transition-all flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-2xs"
               title="Abedoni Backup Site"
             >
-              <span className="hidden 2xl:inline">ব্যাকআপ সাইট:</span>
-              <span className="font-mono hidden xl:inline">abedoni-bd.vercel.app</span>
-              <span className="xl:hidden">ব্যাকআপ সাইট</span>
+              <span>ব্যাকআপ সাইট</span>
               <ExternalLink className="w-3.5 h-3.5 text-blue-600 shrink-0" />
             </a>
 

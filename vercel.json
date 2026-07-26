@@ -5,6 +5,6 @@
   "rewrites": [
     { "source": "/api/orders/:identifier", "destination": "/api/orders/[identifier]" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api|robots\\.txt|sitemap\\.xml|.*\\..*).*)", "destination": "/index.html" }
   ]
 }

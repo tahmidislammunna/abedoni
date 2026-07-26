@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import confetti from 'canvas-confetti';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomeView } from './components/HomeView';
@@ -71,6 +72,62 @@ export default function App() {
   // Sync App Settings with Supabase on mount
   React.useEffect(() => {
     syncAppSettingsWithSupabase().catch(() => {});
+  }, []);
+
+  // Trigger a full-screen grand welcome confetti on page entry
+  React.useEffect(() => {
+    try {
+      const colors = ['#2563eb', '#059669', '#d97706', '#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'];
+      
+      const timer1 = setTimeout(() => {
+        // Left Cannon
+        confetti({
+          particleCount: 80,
+          angle: 60,
+          spread: 80,
+          origin: { x: 0, y: 0.65 },
+          colors,
+          ticks: 250,
+          gravity: 0.8,
+          scalar: 1,
+          disableForReducedMotion: true
+        });
+
+        // Right Cannon
+        confetti({
+          particleCount: 80,
+          angle: 120,
+          spread: 80,
+          origin: { x: 1, y: 0.65 },
+          colors,
+          ticks: 250,
+          gravity: 0.8,
+          scalar: 1,
+          disableForReducedMotion: true
+        });
+      }, 300);
+
+      // Center wide shower burst
+      const timer2 = setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 140,
+          origin: { x: 0.5, y: 0.4 },
+          colors,
+          ticks: 250,
+          gravity: 0.7,
+          scalar: 1.1,
+          disableForReducedMotion: true
+        });
+      }, 550);
+
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    } catch (e) {
+      console.error('Welcome confetti error:', e);
+    }
   }, []);
 
   // Check URL pathname or hash on load & popstate
