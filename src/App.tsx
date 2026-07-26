@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
+import { Analytics } from '@vercel/analytics/react';
 import { Header } from './components/Header';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { HomeView } from './components/HomeView';
@@ -360,7 +361,7 @@ export default function App() {
                 <li className="pt-2">
                   <button onClick={() => setShowPRD(true)} className="text-slate-400 hover:text-slate-300 flex items-center gap-1 text-[11px] cursor-pointer">
                     <BookOpen className="w-3 h-3" />
-                    <span>কারিগরি নথি (PRD)</span>
+                    <span>কারিগরি ন���ি (PRD)</span>
                   </button>
                 </li>
               </ul>
@@ -415,6 +416,9 @@ export default function App() {
         isOpen={showPRD}
         onClose={() => setShowPRD(false)}
       />
+
+      {/* Vercel Web Analytics */}
+      <Analytics />
 
     </div>
   );
