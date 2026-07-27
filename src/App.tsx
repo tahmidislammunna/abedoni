@@ -14,8 +14,10 @@ import { AdminAuthModal } from './components/AdminAuthModal';
 import { WhatsAppFloatingButton } from './components/WhatsAppFloatingButton';
 import { PoliciesModal } from './components/PoliciesModal';
 import { PRDView } from './components/PRDView';
+import { MaintenanceView } from './components/MaintenanceView';
+import { SeoHead } from './components/SeoHead';
 import { BoardChallengeOrder } from './types';
-import { getAppSettings, syncAppSettingsWithSupabase } from './data/appSettings';
+import { getAppSettings, syncAppSettingsWithSupabase, AppSettings } from './data/appSettings';
 import { getWhatsappDirectUrl } from './data/boardsAndSubjects';
 import { trackPageView } from './lib/analytics';
 import { 
@@ -50,7 +52,7 @@ function getPathFromTab(tab: string): string {
 }
 
 export default function App() {
-  const settings = getAppSettings();
+  const [settings, setSettings] = useState<AppSettings>(() => getAppSettings());
   const [activeTab, setActiveTabState] = useState<string>(() => {
     return getTabFromPath(window.location.pathname);
   });
@@ -62,6 +64,8 @@ export default function App() {
   });
   const [showPRD, setShowPRD] = useState<boolean>(false);
 
+  const isMaintenanceActive = Boolean(settings.isMaintenanceMode) && !isAdmin;
+
   const setActiveTab = (tab: string) => {
     setActiveTabState(tab);
     if (isAdmin) setIsAdmin(false);
@@ -71,10 +75,12 @@ export default function App() {
     }
   };
 
-  // Sync App Settings with Supabase on mount
+  // Sync App Settings with Supabase on mount & whenever admin updates
   React.useEffect(() => {
-    syncAppSettingsWithSupabase().catch(() => {});
-  }, []);
+    syncAppSettingsWithSupabase().then((remote) => {
+      if (remote) setSettings(remote);
+    }).catch(() => {});
+  }, [isAdmin]);
 
   // Trigger a full-screen grand welcome confetti on page entry
   React.useEffect(() => {
@@ -182,6 +188,9 @@ export default function App() {
   return (
     <div className="relative min-h-screen bg-[#F0F4FF] text-slate-900 flex flex-col font-bn selection:bg-blue-200 selection:text-blue-900 overflow-x-hidden pb-16 md:pb-0">
       
+      {/* SEO Head Manager */}
+      <SeoHead activeTab={activeTab} isMaintenanceActive={isMaintenanceActive} settings={settings} />
+
       {/* Decorative Frosted Glass Ambient Blur Globs */}
       <div className="fixed top-[-100px] right-[-100px] w-[500px] h-[500px] bg-blue-400/20 rounded-full blur-[140px] pointer-events-none z-0" />
       <div className="fixed bottom-[-50px] left-[-50px] w-[400px] h-[400px] bg-emerald-400/20 rounded-full blur-[120px] pointer-events-none z-0" />
@@ -210,6 +219,14 @@ export default function App() {
               }}
             />
           )
+        ) : isMaintenanceActive ? (
+          <MaintenanceView 
+            settings={settings} 
+            onOpenAdminAuth={() => {
+              setIsAdmin(true);
+              window.history.pushState({}, '', '/admin-munna');
+            }} 
+          />
         ) : (
           <>
             {activeTab === 'home' && (
@@ -250,8 +267,8 @@ export default function App() {
       {/* Floating Traditional WhatsApp Support Action Button */}
       {!(isAdmin && !isAdminAuthenticated) && <WhatsAppFloatingButton />}
 
-      {/* Mobile Bottom Bar for App-like Experience */}
-      {!(isAdmin && !isAdminAuthenticated) && (
+      {/* Mobile Bottom Bar for App-like Experience (hidden during Maintenance Mode) */}
+      {!isMaintenanceActive && !(isAdmin && !isAdminAuthenticated) && (
         <MobileBottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -260,8 +277,8 @@ export default function App() {
         />
       )}
 
-      {/* Footer */}
-      {!(isAdmin && !isAdminAuthenticated) && (
+      {/* Footer (hidden during Maintenance Mode, as MaintenanceView renders its own dedicated footer) */}
+      {!isMaintenanceActive && !(isAdmin && !isAdminAuthenticated) && (
         <footer className="relative z-10 bg-slate-900/95 backdrop-blur-2xl text-slate-300 border-t border-slate-800/60 pt-12 pb-8 mt-16 font-bn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           

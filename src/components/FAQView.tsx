@@ -17,9 +17,36 @@ export const FAQView: React.FC = () => {
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
           setFaqs(data);
+          
+          // Inject FAQPage JSON-LD
+          let faqScript = document.getElementById('faq-page-jsonld');
+          if (!faqScript) {
+            faqScript = document.createElement('script');
+            faqScript.id = 'faq-page-jsonld';
+            faqScript.setAttribute('type', 'application/ld+json');
+            document.head.appendChild(faqScript);
+          }
+          
+          faqScript.textContent = JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": data.map(f => ({
+              "@type": "Question",
+              "name": f.questionBn,
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": f.answerBn
+              }
+            }))
+          });
         }
       })
       .catch(() => {});
+
+    return () => {
+      const faqScript = document.getElementById('faq-page-jsonld');
+      if (faqScript) faqScript.remove();
+    };
   }, []);
 
   const toggle = (idx: number) => {

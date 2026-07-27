@@ -29,6 +29,11 @@ export interface AppSettings {
   logoWordmarkUrl: string;
   announcementPopupText?: string;
   isMaintenanceMode?: boolean;
+  maintenanceLaunchDate?: string;
+  maintenanceHeadline?: string;
+  maintenanceSubheadline?: string;
+  maintenanceNoticeText?: string;
+  lastUpdatedText?: string;
   privacyPolicyText?: string;
   termsText?: string;
   refundPolicyText?: string;
@@ -60,7 +65,12 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   logoIconUrl: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
   logoWordmarkUrl: 'https://munna.pro.bd/tmassets/logo-with-wordmark.jpg',
   announcementPopupText: '',
-  isMaintenanceMode: false,
+  isMaintenanceMode: true,
+  maintenanceLaunchDate: '2026-08-01T10:00:00',
+  maintenanceHeadline: 'SSC Board Challenge 2026',
+  maintenanceSubheadline: 'SSC পরীক্ষার ফলাফল প্রকাশের পর পরই আবেদনী (Abedoni) পোর্টালে অনলাইন আবেদন সেবা আনুষ্ঠানিকভাবে উন্মুক্ত করা হবে।',
+  maintenanceNoticeText: 'আবেদন পোর্টাল বর্তমানে প্রাক-উদ্বোধন (Pre-Launch) মোডে রয়েছে। ফল প্রকাশের পর পর সঙ্গেই থাকুন।',
+  lastUpdatedText: '২৭ জুলাই, ২০২৬ (আজ)',
   adminPin: '1234',
   moderatorUsers: [
     {

@@ -47,7 +47,7 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
-  const [settingsSubTab, setSettingsSubTab] = useState<'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators'>('branding');
+  const [settingsSubTab, setSettingsSubTab] = useState<'maintenance' | 'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators'>('maintenance');
   
   const [orders, setOrders] = useState<BoardChallengeOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -1296,6 +1296,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
           <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3 my-4 text-xs font-bold overflow-x-auto no-scrollbar w-full">
             <button
               type="button"
+              onClick={() => setSettingsSubTab('maintenance')}
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 flex items-center gap-2 ${
+                settingsSubTab === 'maintenance' ? 'bg-amber-500 text-slate-950 font-black shadow-xs' : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <span>🚀 প্রাক-উদ্বোধন / মেইনটেনেন্স</span>
+              {appSettings.isMaintenanceMode ? (
+                <span className="bg-amber-900 text-amber-100 text-[10px] px-2 py-0.5 rounded-md font-mono">ON</span>
+              ) : (
+                <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-md font-mono">OFF</span>
+              )}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setSettingsSubTab('branding')}
               className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'branding' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -1354,6 +1369,157 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
               👥 মডারেটর ইউজারগণ
             </button>
           </div>
+
+          {/* SUBTAB 0: MAINTENANCE & PRE-LAUNCH MODE */}
+          {settingsSubTab === 'maintenance' && (
+            <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base flex items-center gap-2">
+                    <span>🚀 প্রাক-উদ্বোধন ও মেইনটেনেন্স মোড কন্ট্রোল প্যানেল</span>
+                  </h3>
+                  <p className="text-slate-500 text-xs">SSC পরীক্ষার ফল প্রকাশের পূর্বে পুরো ওয়েবসাইটকে নিরাপদ প্রাক-উদ্বোধন পেজে লক করার ব্যবস্থা</p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-700">বর্তমান স্ট্যাটাস:</span>
+                  {appSettings.isMaintenanceMode ? (
+                    <span className="bg-amber-100 text-amber-900 border border-amber-300 font-extrabold px-3 py-1 rounded-full text-xs animate-pulse">
+                      ⚠️ মেইনটেনেন্স চালু (ON)
+                    </span>
+                  ) : (
+                    <span className="bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold px-3 py-1 rounded-full text-xs">
+                      🟢 সাইট সম্পূর্ণ লাইভ (OFF)
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Maintenance Toggle Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div 
+                  onClick={() => setAppSettings({ ...appSettings, isMaintenanceMode: true })}
+                  className={`p-5 rounded-2xl border-2 cursor-pointer transition flex items-start gap-4 ${
+                    appSettings.isMaintenanceMode 
+                      ? 'bg-amber-50/80 border-amber-500 shadow-md ring-2 ring-amber-400/20' 
+                      : 'bg-slate-50 border-slate-200 hover:border-amber-300'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 ${
+                    appSettings.isMaintenanceMode ? 'bg-amber-500 text-slate-950' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    🔒
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-slate-900 text-sm">
+                      ১. মেইনটেনেন্স/প্রাক-উদ্বোধন মোড চালু করুন (ON)
+                    </h4>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                      পাবলিক ইউজাররা কেবল কাউন্টডাউন ও ল্যান্ডিং পেজ দেখতে পাবেন। কোনো আবেদন ফর্ম, পেমেন্ট বা ট্র্যাকিং এক্সেস করতে পারবে না।
+                    </p>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setAppSettings({ ...appSettings, isMaintenanceMode: false })}
+                  className={`p-5 rounded-2xl border-2 cursor-pointer transition flex items-start gap-4 ${
+                    !appSettings.isMaintenanceMode 
+                      ? 'bg-emerald-50/80 border-emerald-500 shadow-md ring-2 ring-emerald-400/20' 
+                      : 'bg-slate-50 border-slate-200 hover:border-emerald-300'
+                  }`}
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0 ${
+                    !appSettings.isMaintenanceMode ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    🌐
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-extrabold text-slate-900 text-sm">
+                      ২. সম্পূর্ণ ওয়েবসাইট লাইভ/সচল করুন (OFF)
+                    </h4>
+                    <p className="text-slate-600 text-xs leading-relaxed">
+                      সকল ভিজিটরদের জন্য সম্পূর্ণ হোমপেজ, আবেদন ফর্ম, বিকাশ/নগদ পেমেন্ট গেটওয়ে ও অর্ডার ট্র্যাকিং তাৎক্ষণিক সচল হয়ে যাবে।
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Maintenance Configuration Inputs */}
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                  <span>⏱️ কাউন্টডাউন টাইমার ও ল্যান্ডিং কন্টেন্ট সেটআপ</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">
+                      কাউন্টডাউন টার্গেট ডেট ও টাইম (Launch Target Date & Time)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={appSettings.maintenanceLaunchDate ? appSettings.maintenanceLaunchDate.slice(0, 16) : '2026-08-01T10:00'}
+                      onChange={e => setAppSettings({ ...appSettings, maintenanceLaunchDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      এই সময়সীমার উপর ভিত্তি করে ল্যান্ডিং পেজে লাইভ দিন, ঘণ্টা, মিনিট ও সেকেন্ডের কাউন্টডাউন ঘড়ি চলবে।
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">
+                      মেইনটেনেন্স পেজ মেইন হেডলাইন (Page Headline)
+                    </label>
+                    <input
+                      type="text"
+                      value={appSettings.maintenanceHeadline || 'SSC Board Challenge 2026'}
+                      onChange={e => setAppSettings({ ...appSettings, maintenanceHeadline: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    মেইনটেনেন্স পেজ সাব-হেডলাইন (Subheadline)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={appSettings.maintenanceSubheadline || 'SSC পরীক্ষার ফলাফল প্রকাশের পর পরই আবেদনী (Abedoni) পোর্টালে অনলাইন আবেদন সেবা আনুষ্ঠানিকভাবে উন্মুক্ত করা হবে।'}
+                    onChange={e => setAppSettings({ ...appSettings, maintenanceSubheadline: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-medium text-slate-900 focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    টাইমারের নিচে অ্যালার্ট নোটিশ টেক্সট (Notice Bar)
+                  </label>
+                  <input
+                    type="text"
+                    value={appSettings.maintenanceNoticeText || 'আবেদন পোর্টাল বর্তমানে প্রাক-উদ্বোধন (Pre-Launch) মোডে রয়েছে। ফল প্রকাশের পর পর সঙ্গেই থাকুন।'}
+                    onChange={e => setAppSettings({ ...appSettings, maintenanceNoticeText: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-bold text-slate-800 mb-1">
+                    সর্বশেষ আপডেট ডেট টেক্সট (Last Updated Text)
+                  </label>
+                  <input
+                    type="text"
+                    value={appSettings.lastUpdatedText || '২৭ জুলাই, ২০২৬ (আজ)'}
+                    onChange={e => setAppSettings({ ...appSettings, lastUpdatedText: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-amber-500"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    পাবলিক ল্যান্ডিং পেজের "Last Updated" কার্ডে এই তারিখ স্বয়ংক্রিয়ভাবে দেখাবে।
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* SUBTAB 1: BRANDING & TITLES */}
           {settingsSubTab === 'branding' && (
