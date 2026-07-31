@@ -86,7 +86,7 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     }
     canonicalElement.setAttribute('href', `https://abedoni.shop${canonicalPath}`);
 
-    // 4. Update Open Graph Meta
+    // 4. Update Open Graph Meta & Images
     let ogTitle = document.querySelector('meta[property="og:title"]');
     if (ogTitle) ogTitle.setAttribute('content', pageTitle);
 
@@ -96,6 +96,58 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     let ogUrl = document.querySelector('meta[property="og:url"]');
     if (ogUrl) ogUrl.setAttribute('content', `https://abedoni.shop${canonicalPath}`);
 
+    // Dynamic Branding & Cache Busting (Favicon, OG Image, Touch Icons)
+    const brandingVer = settings.brandingVersion || Date.now();
+    const applyCacheBuster = (url: string) => {
+      if (!url) return '';
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}v=${brandingVer}`;
+    };
+
+    const favUrl = settings.favicon || settings.websiteLogo || settings.logoIconUrl || 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg';
+    const versionedFavicon = applyCacheBuster(favUrl);
+
+    // Update / Replace Favicons in DOM
+    const updateLinkTag = (rel: string, href: string) => {
+      let existing = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement;
+      if (existing) {
+        existing.remove(); // Force browser cache bust by replacing element
+      }
+      const newLink = document.createElement('link');
+      newLink.rel = rel;
+      newLink.href = href;
+      document.head.appendChild(newLink);
+    };
+
+    updateLinkTag('icon', versionedFavicon);
+    updateLinkTag('shortcut icon', versionedFavicon);
+
+    const appleTouchUrl = settings.appleTouchIcon || favUrl;
+    updateLinkTag('apple-touch-icon', applyCacheBuster(appleTouchUrl));
+
+    // Update OG & Twitter Card Images
+    const ogImgUrl = settings.ogImage || settings.defaultShareImage || settings.websiteLogo || settings.logoIconUrl;
+    const versionedOgImg = applyCacheBuster(ogImgUrl);
+
+    let ogImageMeta = document.querySelector('meta[property="og:image"]');
+    if (!ogImageMeta) {
+      ogImageMeta = document.createElement('meta');
+      ogImageMeta.setAttribute('property', 'og:image');
+      document.head.appendChild(ogImageMeta);
+    }
+    ogImageMeta.setAttribute('content', versionedOgImg);
+
+    const twitterImgUrl = settings.twitterCardImage || ogImgUrl;
+    const versionedTwitterImg = applyCacheBuster(twitterImgUrl);
+
+    let twitterImageMeta = document.querySelector('meta[name="twitter:image"]');
+    if (!twitterImageMeta) {
+      twitterImageMeta = document.createElement('meta');
+      twitterImageMeta.setAttribute('name', 'twitter:image');
+      document.head.appendChild(twitterImageMeta);
+    }
+    twitterImageMeta.setAttribute('content', versionedTwitterImg);
+
     // 5. Inject Dynamic JSON-LD Structured Data
     let schemaScript = document.getElementById('dynamic-seo-schema');
     if (!schemaScript) {
@@ -104,6 +156,8 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
       schemaScript.setAttribute('type', 'application/ld+json');
       document.head.appendChild(schemaScript);
     }
+
+    const orgLogo = settings.websiteLogo || settings.logoIconUrl;
 
     const breadcrumbs = [
       {
@@ -124,6 +178,18 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     }
 
     const dynamicGraph: any[] = [
+      {
+        "@type": "Organization",
+        "@id": "https://abedoni.shop/#organization",
+        "name": settings.siteName || "Abedoni (আবেদনী)",
+        "url": "https://abedoni.shop/",
+        "logo": orgLogo,
+        "description": "Abedoni is an independent digital application assistance platform for SSC Board Challenge & Re-scrutiny processing in Bangladesh.",
+        "email": settings.officialEmail,
+        "sameAs": [
+          settings.facebookPageUrl || "https://facebook.com/abedoni.bd"
+        ]
+      },
       {
         "@type": "WebPage",
         "@id": `https://abedoni.shop${canonicalPath}#webpage`,

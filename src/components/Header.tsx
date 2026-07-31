@@ -12,6 +12,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { SUPPORT_CONFIG } from '../data/boardsAndSubjects';
+import { getAppSettings, AppSettings } from '../data/appSettings';
 
 interface HeaderProps {
   activeTab: string;
@@ -19,15 +20,20 @@ interface HeaderProps {
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
   setShowPRD?: (show: boolean) => void;
+  settings?: AppSettings;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   isAdmin,
-  setIsAdmin
+  setIsAdmin,
+  settings
 }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
+  const currentSettings = settings || getAppSettings();
+  const logoUrl = currentSettings.websiteLogo || currentSettings.logoIconUrl || SUPPORT_CONFIG.logoIconUrl;
+  const logoWordmark = currentSettings.websiteWordmark || currentSettings.logoWordmarkUrl;
 
   return (
     <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-xs transition-all">
@@ -37,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({
           ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা
         </span>
         <span className="hidden sm:inline text-white/50">•</span>
-        <span className="truncate">SSC Board Challenge 2026 ঘরে বসেই সহজ ও দ্রুত আবেদন প্রসেসিং ডিজিটাল সেবা</span>
+        <span className="truncate">{currentSettings.noticeBannerText || 'SSC Board Challenge 2026 ঘরে বসেই সহজ ও দ্রুত আবেদন প্রসেসিং ডিজিটাল সেবা'}</span>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -51,8 +57,8 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-white p-1 border border-blue-100 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
                 <img 
-                  src={SUPPORT_CONFIG.logoIconUrl} 
-                  alt="Abedoni Logo Icon" 
+                  src={logoUrl} 
+                  alt={currentSettings.siteName || "Abedoni Logo Icon"} 
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
@@ -63,8 +69,12 @@ export const Header: React.FC<HeaderProps> = ({
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-bn leading-tight">আবেদনী</span>
-                <p className="text-[10px] sm:text-xs lg:text-sm text-emerald-600 font-bold font-bn">আবেদন হোক সহজ</p>
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-bn leading-tight">
+                  {currentSettings.siteName || 'আবেদনী'}
+                </span>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-emerald-600 font-bold font-bn">
+                  {currentSettings.heroHeadline || 'আবেদন হোক সহজ'}
+                </p>
               </div>
             </div>
           </div>

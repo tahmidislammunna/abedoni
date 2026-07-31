@@ -35,11 +35,146 @@ import {
   TrendingUp,
   UserPlus,
   Edit,
-  X
+  X,
+  FileImage,
+  Upload
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
 import { BOARDS_LIST, generateFirstSmsCommand, generateSecondSmsCommand, replaceTemplateVars } from '../data/boardsAndSubjects';
-import { getAppSettings, saveAppSettings, AppSettings, ModeratorUser } from '../data/appSettings';
+import { getAppSettings, saveAppSettings, AppSettings, ModeratorUser, MediaAsset } from '../data/appSettings';
+import { MediaLibraryModal } from './MediaLibraryModal';
+import { uploadToBrandStorage } from '../lib/supabase';
+
+interface BrandAssetCardProps {
+  title: string;
+  fieldKey: keyof AppSettings;
+  description: string;
+  value: string;
+  onChange: (val: string) => void;
+  onOpenPicker: (fieldKey: keyof AppSettings, title: string) => void;
+}
+
+const BrandAssetCard: React.FC<BrandAssetCardProps> = ({
+  title,
+  fieldKey,
+  description,
+  value,
+  onChange,
+  onOpenPicker
+}) => {
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setIsUploading(true);
+    try {
+      const asset = await uploadToBrandStorage(file, String(fieldKey));
+      onChange(asset.url);
+    } catch (err: any) {
+      alert(err.message || 'ছবি আপলোড করতে সমস্যা হয়েছে');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-2xs hover:border-slate-300 transition space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5 flex-wrap">
+            <span>{title}</span>
+            <span className="font-mono text-[10px] text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full font-bold">
+              {String(fieldKey)}
+            </span>
+          </h4>
+          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{description}</p>
+        </div>
+
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            className="text-xs text-red-600 hover:text-red-800 font-bold hover:underline cursor-pointer shrink-0"
+          >
+            রিমুভ
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center gap-4">
+        {/* Preview Thumbnail */}
+        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white border-2 border-dashed border-slate-300 p-2 flex items-center justify-center shrink-0 overflow-hidden shadow-xs relative">
+          {value ? (
+            <img
+              src={value}
+              alt={title}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="text-center text-slate-400">
+              <FileImage className="w-6 h-6 mx-auto mb-1 opacity-50" />
+              <span className="text-[10px] font-bold block">No Image</span>
+            </div>
+          )}
+        </div>
+
+        {/* Action Controls & Input */}
+        <div className="flex-1 w-full space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onOpenPicker(fieldKey, `${title} সেটিং সিলেক্ট করুন`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span>মিডিয়া লাইব্রেরি থেকে বাছুন</span>
+            </button>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleDirectUpload}
+              className="hidden"
+            />
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            >
+              {isUploading ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>আপলোড হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  <span>ফাইল আপলোড</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <input
+            type="text"
+            value={value || ''}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="https://... অথবা মিডিয়া লাইব্রেরি URL"
+            className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface AdminPanelProps {
   onLogout?: () => void;
@@ -47,7 +182,18 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
   const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
-  const [settingsSubTab, setSettingsSubTab] = useState<'maintenance' | 'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators'>('maintenance');
+  const [settingsSubTab, setSettingsSubTab] = useState<'maintenance' | 'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators' | 'medialibrary'>('branding');
+  
+  // Media Library Picker Modal State
+  const [mediaModalOpen, setMediaModalOpen] = useState<boolean>(false);
+  const [mediaPickerField, setMediaPickerField] = useState<keyof AppSettings | null>(null);
+  const [mediaPickerTitle, setMediaPickerTitle] = useState<string>('মিডিয়া লাইব্রেরি');
+
+  const openMediaPicker = (fieldKey: keyof AppSettings, title: string) => {
+    setMediaPickerField(fieldKey);
+    setMediaPickerTitle(title);
+    setMediaModalOpen(true);
+  };
   
   const [orders, setOrders] = useState<BoardChallengeOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -282,10 +428,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
-    const updated = saveAppSettings(appSettings);
+    const settingsWithVersion = {
+      ...appSettings,
+      brandingVersion: Date.now()
+    };
+    const updated = saveAppSettings(settingsWithVersion);
     setAppSettings(updated);
-    setSettingsSavedMessage('সকল সেটিংস সফলভাবে আপডেট ও সেভ করা হয়েছে!');
-    setTimeout(() => setSettingsSavedMessage(''), 3500);
+    setSettingsSavedMessage('সকল ব্র্যান্ডিং সেটিংস ও ওয়েবসাইট ফাইলস সফলভাবে সেভ করা হয়েছে!');
+    setTimeout(() => setSettingsSavedMessage(''), 4000);
   };
 
   const copyText = (text: string, id: string) => {
@@ -1321,6 +1471,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
             <button
               type="button"
+              onClick={() => {
+                setMediaPickerField(null);
+                setMediaPickerTitle('মিডিয়া লাইব্রেরি & ব্র্যান্ড ফাইলস');
+                setSettingsSubTab('medialibrary');
+              }}
+              className={`px-3.5 py-2 rounded-xl transition shrink-0 flex items-center gap-1.5 ${
+                settingsSubTab === 'medialibrary' ? 'bg-blue-600 text-white shadow-xs font-bold' : 'bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 font-bold'
+              }`}
+            >
+              <FileImage className="w-3.5 h-3.5" />
+              <span>📁 মিডিয়া লাইব্রেরি</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setSettingsSubTab('payments')}
               className={`px-3.5 py-2 rounded-xl transition shrink-0 ${
                 settingsSubTab === 'payments' ? 'bg-slate-900 text-white shadow-xs' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
@@ -1523,73 +1688,248 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
           {/* SUBTAB 1: BRANDING & TITLES */}
           {settingsSubTab === 'branding' && (
-            <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
-              <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
-                সাইট হেডলাইন ও নোটিশ ব্যানার কাস্টমাইজেশন
-              </h3>
+            <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
+              
+              {/* Site Titles Section */}
+              <div className="space-y-4">
+                <h3 className="font-black text-slate-900 text-base border-b border-slate-100 pb-2 flex items-center justify-between">
+                  <span>সাইট টাইটেল ও নোটিশ কাস্টমাইজেশন</span>
+                  <span className="text-xs text-slate-500 font-normal">পরিবর্তন করে "সেটিংস সেভ করুন" চাপুন</span>
+                </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">সাইট নেম / টাইটেল</label>
+                    <input
+                      type="text"
+                      value={appSettings.siteName}
+                      onChange={e => setAppSettings({ ...appSettings, siteName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">টপ নোটিশ বার টেক্সট (Top Banner Text)</label>
+                    <input
+                      type="text"
+                      value={appSettings.noticeBannerText}
+                      onChange={e => setAppSettings({ ...appSettings, noticeBannerText: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label className="block font-bold text-slate-800 mb-1">সাইট নেম / টাইটেল</label>
+                  <label className="block font-bold text-slate-800 mb-1">ল্যান্ডিং পেজ মেইন হেডলাইন (Hero Headline)</label>
                   <input
                     type="text"
-                    value={appSettings.siteName}
-                    onChange={e => setAppSettings({ ...appSettings, siteName: e.target.value })}
+                    value={appSettings.heroHeadline}
+                    onChange={e => setAppSettings({ ...appSettings, heroHeadline: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-800 mb-1">টপ নোটিশ বার টেক্সট (Top Banner Text)</label>
-                  <input
-                    type="text"
-                    value={appSettings.noticeBannerText}
-                    onChange={e => setAppSettings({ ...appSettings, noticeBannerText: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  <label className="block font-bold text-slate-800 mb-1">ল্যান্ডিং পেজ সাব-হেডলাইন (Hero Subtitle)</label>
+                  <textarea
+                    rows={2}
+                    value={appSettings.heroSubheadline}
+                    onChange={e => setAppSettings({ ...appSettings, heroSubheadline: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-800 mb-1">ল্যান্ডিং পেজ মেইন হেডলাইন (Hero Headline)</label>
-                <input
-                  type="text"
-                  value={appSettings.heroHeadline}
-                  onChange={e => setAppSettings({ ...appSettings, heroHeadline: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Centralized Brand Assets Management Section */}
+              <div className="pt-4 border-t border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                      <Sparkles className="w-5 h-5 text-amber-500" />
+                      <span>সেন্ট্রালাইজড মিডিয়া & ওয়েবসাইট ব্র্যান্ডিং এসেটস (১১ টি ফাইল)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      লোগো, ফেভআইকন, ওপেন গ্রাফ সোশ্যাল ব্যানার সরাসরি মিডিয়া লাইব্রেরি থেকে সেট করুন।
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMediaPickerField(null);
+                      setMediaPickerTitle('মিডিয়া লাইব্রেরি & ব্র্যান্ড ফাইলস');
+                      setSettingsSubTab('medialibrary');
+                    }}
+                    className="bg-blue-50 hover:bg-blue-100 text-blue-700 font-extrabold text-xs px-3.5 py-2 rounded-xl border border-blue-200 flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>ফুল মিডিয়া লাইব্রেরি ভিউ</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* 1. Website Logo */}
+                  <BrandAssetCard
+                    title="Website Logo (মূল লোগো)"
+                    fieldKey="websiteLogo"
+                    description="ওয়েবসাইট হেডার ও নেভিগেশন বারের মূল ব্র্যান্ড লোগো"
+                    value={appSettings.websiteLogo || appSettings.logoIconUrl}
+                    onChange={(val) => setAppSettings({ ...appSettings, websiteLogo: val, logoIconUrl: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 2. Website Wordmark */}
+                  <BrandAssetCard
+                    title="Website Wordmark (ওয়ার্ডমার্ক টাইপোগ্রাফি)"
+                    fieldKey="websiteWordmark"
+                    description="হেডার ও ফুটারে ব্যবহারযোগ্য লোগো টাইপোগ্রাফি বা টেক্সট ইমেজ"
+                    value={appSettings.websiteWordmark || appSettings.logoWordmarkUrl}
+                    onChange={(val) => setAppSettings({ ...appSettings, websiteWordmark: val, logoWordmarkUrl: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 3. Favicon */}
+                  <BrandAssetCard
+                    title="Favicon (ব্রাউজার ট্যাব আইকন)"
+                    fieldKey="favicon"
+                    description="ব্রাউজার ট্যাবে প্রদর্শিত ১৬x১৬ বা ৩২x৩২ পিক্সেল আইকন (.png, .ico, .svg)"
+                    value={appSettings.favicon}
+                    onChange={(val) => setAppSettings({ ...appSettings, favicon: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 4. Apple Touch Icon */}
+                  <BrandAssetCard
+                    title="Apple Touch Icon (iOS অ্যাপ আইকন)"
+                    fieldKey="appleTouchIcon"
+                    description="আইফোন ও আইপ্যাডের হোমস্ক্রিন এবং বুকমার্ক শর্টকাট আইকন (১৮০x১৮০ পিক্সেল)"
+                    value={appSettings.appleTouchIcon}
+                    onChange={(val) => setAppSettings({ ...appSettings, appleTouchIcon: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 5. Open Graph (OG) Image */}
+                  <BrandAssetCard
+                    title="Open Graph (OG) Image (সোশ্যাল শেয়ার থাম্বনেইল)"
+                    fieldKey="ogImage"
+                    description="ফেসবুক, হোয়াটসঅ্যাপ, মেসেঞ্জারে লিংক পাঠালে কার্ডে যে ছবি দেখায় (১২০০x৬৩০ পিক্সেল)"
+                    value={appSettings.ogImage}
+                    onChange={(val) => setAppSettings({ ...appSettings, ogImage: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 6. Twitter Card Image */}
+                  <BrandAssetCard
+                    title="Twitter / X Card Image"
+                    fieldKey="twitterCardImage"
+                    description="টুইটার/X পোস্টে লিংক শেয়ারের জন্য বড় আকৃতির সামারি কার্ড ব্যানার"
+                    value={appSettings.twitterCardImage}
+                    onChange={(val) => setAppSettings({ ...appSettings, twitterCardImage: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 7. Facebook Cover */}
+                  <BrandAssetCard
+                    title="Facebook Cover (ফেসবুক কভার ব্যানার)"
+                    fieldKey="facebookCover"
+                    description="ফেসবুক পেজ বা সোশ্যাল মিডিয়া ক্যাম্পেইন ব্যানার"
+                    value={appSettings.facebookCover}
+                    onChange={(val) => setAppSettings({ ...appSettings, facebookCover: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 8. Default Share Image */}
+                  <BrandAssetCard
+                    title="Default Share Image (ব্যাকআপ শেয়ার ইমেজ)"
+                    fieldKey="defaultShareImage"
+                    description="যেকোনো অন্যান্য সোশ্যাল প্ল্যাটফর্মে লিংক প্রিভিউয়ের ব্যাকআপ ছবি"
+                    value={appSettings.defaultShareImage}
+                    onChange={(val) => setAppSettings({ ...appSettings, defaultShareImage: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 9. App Icon */}
+                  <BrandAssetCard
+                    title="App Icon (PWA মোবাইল অ্যাপ আইকন)"
+                    fieldKey="appIcon"
+                    description="প্রোগ্রেসিভ ওয়েব অ্যাপ (PWA) ও অ্যান্ড্রয়েড অ্যাপ শর্টকাট আইকন (৫১২x৫১২ পিক্সেল)"
+                    value={appSettings.appIcon}
+                    onChange={(val) => setAppSettings({ ...appSettings, appIcon: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 10. Loading Logo */}
+                  <BrandAssetCard
+                    title="Loading Logo (পেজ লোডার লোগো)"
+                    fieldKey="loadingLogo"
+                    description="ওয়েবসাইট লোড বা ডাটা প্রসেসিং চলাকালে স্পিনারে প্রদর্শিত লোগো"
+                    value={appSettings.loadingLogo}
+                    onChange={(val) => setAppSettings({ ...appSettings, loadingLogo: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+
+                  {/* 11. Footer Logo */}
+                  <BrandAssetCard
+                    title="Footer Logo (ফুটার লোগো)"
+                    fieldKey="footerLogo"
+                    description="ওয়েবসাইটের নিচে ফুটার সেকশনে ব্যবহৃত ওয়াটারমার্ক বা ডার্ক ভার্সন লোগো"
+                    value={appSettings.footerLogo}
+                    onChange={(val) => setAppSettings({ ...appSettings, footerLogo: val })}
+                    onOpenPicker={openMediaPicker}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-800 mb-1">ল্যান্ডিং পেজ সাব-হেডলাইন (Hero Subtitle)</label>
-                <textarea
-                  rows={2}
-                  value={appSettings.heroSubheadline}
-                  onChange={e => setAppSettings({ ...appSettings, heroSubheadline: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            </div>
+          )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* SUBTAB: MEDIA LIBRARY FULL PAGE VIEW */}
+          {settingsSubTab === 'medialibrary' && (
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4 animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <label className="block font-bold text-slate-800 mb-1">Logo Icon SVG URL</label>
-                  <input
-                    type="text"
-                    value={appSettings.logoIconUrl}
-                    onChange={e => setAppSettings({ ...appSettings, logoIconUrl: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-mono text-xs text-slate-900"
-                  />
+                  <h3 className="font-extrabold text-slate-900 text-lg flex items-center gap-2">
+                    <FileImage className="w-5 h-5 text-blue-600" />
+                    <span>সেন্ট্রাল মিডিয়া লাইব্রেরি ও ফাইল ম্যানেজার</span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    এখানে আপনার ব্র্যাণ্ডিংয়ের সকল ছবি, লোগো, আইকন ও সোশ্যাল ব্যানার ফাইল আপলোড, নাম পরিবর্তন, ব্যাকআপ ও ডিলিট করুন।
+                  </p>
                 </div>
 
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">Logo Wordmark Image URL</label>
-                  <input
-                    type="text"
-                    value={appSettings.logoWordmarkUrl}
-                    onChange={e => setAppSettings({ ...appSettings, logoWordmarkUrl: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 font-mono text-xs text-slate-900"
-                  />
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setSettingsSubTab('branding')}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer"
+                >
+                  ← ব্র্যান্ডিং সেটআপে ফিরুন
+                </button>
+              </div>
+
+              {/* Embedded Media Library Container */}
+              <div className="pt-2">
+                <MediaLibraryModal
+                  isOpen={true}
+                  onClose={() => setSettingsSubTab('branding')}
+                  mediaList={appSettings.mediaLibrary || []}
+                  onUpdateMediaList={(newList) => {
+                    const updated = { ...appSettings, mediaLibrary: newList };
+                    setAppSettings(updated);
+                    saveAppSettings(updated);
+                  }}
+                  onSelectMedia={(asset) => {
+                    if (mediaPickerField) {
+                      const updated = { ...appSettings, [mediaPickerField]: asset.url };
+                      setAppSettings(updated);
+                      saveAppSettings(updated);
+                      alert(`'${asset.originalName}' ফাইলটি ${String(mediaPickerField)} সেটিংসে সেট করা হয়েছে!`);
+                    } else {
+                      navigator.clipboard.writeText(asset.url);
+                      alert(`লিংক কপি হয়েছে:\n${asset.url}`);
+                    }
+                  }}
+                  pickerTitle={mediaPickerTitle}
+                />
               </div>
             </div>
           )}
@@ -2421,6 +2761,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
           </div>
         </div>
+      )}
+
+      {/* Media Library Picker Modal */}
+      {mediaModalOpen && (
+        <MediaLibraryModal
+          isOpen={mediaModalOpen}
+          onClose={() => setMediaModalOpen(false)}
+          mediaList={appSettings.mediaLibrary || []}
+          onUpdateMediaList={(newList) => {
+            const updated = { ...appSettings, mediaLibrary: newList };
+            setAppSettings(updated);
+            saveAppSettings(updated);
+          }}
+          onSelectMedia={(asset) => {
+            if (mediaPickerField) {
+              const updated = {
+                ...appSettings,
+                [mediaPickerField]: asset.url,
+                brandingVersion: Date.now()
+              };
+              setAppSettings(updated);
+              saveAppSettings(updated);
+              setMediaModalOpen(false);
+              setSettingsSavedMessage(`'${asset.originalName}' ফাইলটি ${String(mediaPickerField)} সেটিংসে সেট করা হয়েছে!`);
+              setTimeout(() => setSettingsSavedMessage(''), 3500);
+            }
+          }}
+          pickerTitle={mediaPickerTitle}
+        />
       )}
 
     </div>

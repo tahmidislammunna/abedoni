@@ -10,6 +10,19 @@ export interface ModeratorUser {
   createdAt: string;
 }
 
+export interface MediaAsset {
+  id: string;
+  name: string;
+  slug: string;
+  url: string;
+  size: number;
+  type: string;
+  createdAt: string;
+  storagePath?: string;
+  width?: number;
+  height?: number;
+}
+
 export interface AppSettings {
   siteName: string;
   heroHeadline: string;
@@ -27,6 +40,24 @@ export interface AppSettings {
   noticeBannerText: string;
   logoIconUrl: string;
   logoWordmarkUrl: string;
+
+  // Dedicated Brand Selectors
+  websiteLogo?: string;
+  websiteWordmark?: string;
+  favicon?: string;
+  appleTouchIcon?: string;
+  ogImage?: string;
+  twitterCardImage?: string;
+  facebookCover?: string;
+  defaultShareImage?: string;
+  appIcon?: string;
+  loadingLogo?: string;
+  footerLogo?: string;
+  brandingVersion?: number;
+
+  // Media Library
+  mediaLibrary?: MediaAsset[];
+
   announcementPopupText?: string;
   isMaintenanceMode?: boolean;
   maintenanceLaunchDate?: string;
@@ -64,6 +95,23 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   noticeBannerText: 'SSC Board Challenge 2026 আবেদনের পোর্টাল খোলা রয়েছে • টেলিটক সিম ছাড়াই ঘরে বসে ৫ মিনিটে আবেদন করুন',
   logoIconUrl: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
   logoWordmarkUrl: 'https://munna.pro.bd/tmassets/logo-with-wordmark.jpg',
+
+  // Dedicated Brand Defaults
+  websiteLogo: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  websiteWordmark: 'https://munna.pro.bd/tmassets/logo-with-wordmark.jpg',
+  favicon: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  appleTouchIcon: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  ogImage: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  twitterCardImage: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  facebookCover: 'https://munna.pro.bd/tmassets/logo-with-wordmark.jpg',
+  defaultShareImage: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  appIcon: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  loadingLogo: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  footerLogo: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
+  brandingVersion: 1784968115,
+
+  mediaLibrary: [],
+
   announcementPopupText: '',
   isMaintenanceMode: true,
   maintenanceLaunchDate: '2026-08-01T10:00:00',
