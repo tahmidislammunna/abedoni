@@ -13,9 +13,9 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
   settings
 }) => {
   useEffect(() => {
-    const siteName = 'আবেদনী (Abedoni)';
-    let pageTitle = 'আবেদনী (Abedoni) - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন ২০২৬';
-    let metaDescription = 'আবেদনী (Abedoni) - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন আবেদনের জন্য একটি স্বাধীন অনলাইন সহায়তাকারী প্ল্যাটফর্ম। সহজ ও নিরাপদ প্রক্রিয়ায় টেলিটক সিম ছাড়াই বিকাশ/নগদে আবেদন করুন।';
+    const siteName = settings.siteName || 'আবেদনী (Abedoni)';
+    let pageTitle = `${siteName} - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন ২০২৬`;
+    let metaDescription = `${siteName} - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন আবেদনের জন্য একটি স্বাধীন অনলাইন সহায়তাকারী প্ল্যাটফর্ম। সহজ ও নিরাপদ প্রক্রিয়ায় টেলিটক সিম ছাড়াই বিকাশ/নগদে আবেদন করুন।`;
     let canonicalPath = '/';
 
     if (isMaintenanceActive) {
@@ -26,7 +26,7 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     } else {
       switch (activeTab) {
         case 'home':
-          pageTitle = `আবেদনী (Abedoni) - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন ২০২৬ আবেদন সহায়তা`;
+          pageTitle = `${siteName} - SSC বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন ২০২৬ আবেদন সহায়তা`;
           metaDescription = `SSC পরীক্ষা ২০২৬ এর বোর্ড চ্যালেঞ্জ ও খাতা পুনঃমূল্যায়ন আবেদনের স্বাধীন ডিজিটাল অনলাইন প্ল্যাটফর্ম। টেলিটক সিম ছাড়াই বিকাশ, নগদ বা রকেট দিয়ে সহজ আবেদন।`;
           canonicalPath = '/';
           break;
@@ -68,85 +68,64 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     // 1. Update Document Title
     document.title = pageTitle;
 
+    // Helper functions for tags
+    const updateLinkTag = (rel: string, href: string, type?: string) => {
+      let element = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
+      if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', rel);
+        document.head.appendChild(element);
+      }
+      if (type) element.setAttribute('type', type);
+      element.setAttribute('href', href);
+    };
+
+    const updateMetaTag = (attrName: 'name' | 'property', attrValue: string, content: string) => {
+      let element = document.querySelector(`meta[${attrName}="${attrValue}"]`) as HTMLMetaElement | null;
+      if (!element) {
+        element = document.createElement('meta');
+        element.setAttribute(attrName, attrValue);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('content', content);
+    };
+
+    // Cache-busting parameter for asset URLs
+    const getCacheBustedUrl = (url: string) => {
+      if (!url) return '';
+      if (url.includes('v=')) return url;
+      const v = Date.now();
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}v=${v}`;
+    };
+
+    const logoIconUrl = settings.logoIconUrl || 'https://raw.githubusercontent.com/tahmidislammunna/tm/0a4f98323c65fd4013d3a2fd8d66b2e2d750e5d5/favicon-logo-icon.svg';
+    const logoWordmarkUrl = settings.logoWordmarkUrl || logoIconUrl;
+
+    const cacheBustedIcon = getCacheBustedUrl(logoIconUrl);
+    const cacheBustedWordmark = getCacheBustedUrl(logoWordmarkUrl);
+
+    // Dynamic Favicon & Icons with Cache-Busting
+    updateLinkTag('icon', cacheBustedIcon, logoIconUrl.endsWith('.svg') ? 'image/svg+xml' : undefined);
+    updateLinkTag('shortcut icon', cacheBustedIcon);
+    updateLinkTag('apple-touch-icon', cacheBustedIcon);
+
     // 2. Update Meta Description
-    let metaDescElement = document.querySelector('meta[name="description"]');
-    if (!metaDescElement) {
-      metaDescElement = document.createElement('meta');
-      metaDescElement.setAttribute('name', 'description');
-      document.head.appendChild(metaDescElement);
-    }
-    metaDescElement.setAttribute('content', metaDescription);
+    updateMetaTag('name', 'description', metaDescription);
 
     // 3. Update Canonical Tag
-    let canonicalElement = document.querySelector('link[rel="canonical"]');
-    if (!canonicalElement) {
-      canonicalElement = document.createElement('link');
-      canonicalElement.setAttribute('rel', 'canonical');
-      document.head.appendChild(canonicalElement);
-    }
-    canonicalElement.setAttribute('href', `https://abedoni.shop${canonicalPath}`);
+    updateLinkTag('canonical', `https://abedoni.shop${canonicalPath}`);
 
-    // 4. Update Open Graph Meta & Images
-    let ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', pageTitle);
-
-    let ogDesc = document.querySelector('meta[property="og:description"]');
-    if (ogDesc) ogDesc.setAttribute('content', metaDescription);
-
-    let ogUrl = document.querySelector('meta[property="og:url"]');
-    if (ogUrl) ogUrl.setAttribute('content', `https://abedoni.shop${canonicalPath}`);
-
-    // Dynamic Branding & Cache Busting (Favicon, OG Image, Touch Icons)
-    const brandingVer = settings.brandingVersion || Date.now();
-    const applyCacheBuster = (url: string) => {
-      if (!url) return '';
-      const sep = url.includes('?') ? '&' : '?';
-      return `${url}${sep}v=${brandingVer}`;
-    };
-
-    const favUrl = settings.favicon || settings.websiteLogo || settings.logoIconUrl || 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg';
-    const versionedFavicon = applyCacheBuster(favUrl);
-
-    // Update / Replace Favicons in DOM
-    const updateLinkTag = (rel: string, href: string) => {
-      let existing = document.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement;
-      if (existing) {
-        existing.remove(); // Force browser cache bust by replacing element
-      }
-      const newLink = document.createElement('link');
-      newLink.rel = rel;
-      newLink.href = href;
-      document.head.appendChild(newLink);
-    };
-
-    updateLinkTag('icon', versionedFavicon);
-    updateLinkTag('shortcut icon', versionedFavicon);
-
-    const appleTouchUrl = settings.appleTouchIcon || favUrl;
-    updateLinkTag('apple-touch-icon', applyCacheBuster(appleTouchUrl));
-
-    // Update OG & Twitter Card Images
-    const ogImgUrl = settings.ogImage || settings.defaultShareImage || settings.websiteLogo || settings.logoIconUrl;
-    const versionedOgImg = applyCacheBuster(ogImgUrl);
-
-    let ogImageMeta = document.querySelector('meta[property="og:image"]');
-    if (!ogImageMeta) {
-      ogImageMeta = document.createElement('meta');
-      ogImageMeta.setAttribute('property', 'og:image');
-      document.head.appendChild(ogImageMeta);
-    }
-    ogImageMeta.setAttribute('content', versionedOgImg);
-
-    const twitterImgUrl = settings.twitterCardImage || ogImgUrl;
-    const versionedTwitterImg = applyCacheBuster(twitterImgUrl);
-
-    let twitterImageMeta = document.querySelector('meta[name="twitter:image"]');
-    if (!twitterImageMeta) {
-      twitterImageMeta = document.createElement('meta');
-      twitterImageMeta.setAttribute('name', 'twitter:image');
-      document.head.appendChild(twitterImageMeta);
-    }
-    twitterImageMeta.setAttribute('content', versionedTwitterImg);
+    // 4. Update Open Graph & Twitter Meta
+    updateMetaTag('property', 'og:title', pageTitle);
+    updateMetaTag('property', 'og:description', metaDescription);
+    updateMetaTag('property', 'og:url', `https://abedoni.shop${canonicalPath}`);
+    updateMetaTag('property', 'og:image', cacheBustedWordmark);
+    updateMetaTag('property', 'og:image:secure_url', cacheBustedWordmark);
+    updateMetaTag('name', 'twitter:title', pageTitle);
+    updateMetaTag('name', 'twitter:description', metaDescription);
+    updateMetaTag('name', 'twitter:image', cacheBustedWordmark);
+    updateMetaTag('name', 'twitter:image:src', cacheBustedWordmark);
 
     // 5. Inject Dynamic JSON-LD Structured Data
     let schemaScript = document.getElementById('dynamic-seo-schema');
@@ -156,8 +135,6 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
       schemaScript.setAttribute('type', 'application/ld+json');
       document.head.appendChild(schemaScript);
     }
-
-    const orgLogo = settings.websiteLogo || settings.logoIconUrl;
 
     const breadcrumbs = [
       {
@@ -178,18 +155,6 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
     }
 
     const dynamicGraph: any[] = [
-      {
-        "@type": "Organization",
-        "@id": "https://abedoni.shop/#organization",
-        "name": settings.siteName || "Abedoni (আবেদনী)",
-        "url": "https://abedoni.shop/",
-        "logo": orgLogo,
-        "description": "Abedoni is an independent digital application assistance platform for SSC Board Challenge & Re-scrutiny processing in Bangladesh.",
-        "email": settings.officialEmail,
-        "sameAs": [
-          settings.facebookPageUrl || "https://facebook.com/abedoni.bd"
-        ]
-      },
       {
         "@type": "WebPage",
         "@id": `https://abedoni.shop${canonicalPath}#webpage`,
@@ -217,8 +182,9 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
         "serviceType": "Educational Application Assistance",
         "provider": {
           "@type": "Organization",
-          "name": "Abedoni (আবেদনী)",
-          "url": "https://abedoni.shop/"
+          "name": siteName,
+          "url": "https://abedoni.shop/",
+          "logo": cacheBustedIcon
         },
         "areaServed": {
           "@type": "Country",

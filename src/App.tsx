@@ -20,6 +20,7 @@ import { BoardChallengeOrder } from './types';
 import { getAppSettings, syncAppSettingsWithSupabase, AppSettings } from './data/appSettings';
 import { getWhatsappDirectUrl } from './data/boardsAndSubjects';
 import { trackPageView } from './lib/analytics';
+import { supabase } from './lib/supabase';
 import { 
   Heart, 
   MessageSquare, 
@@ -81,6 +82,36 @@ export default function App() {
       if (remote) setSettings(remote);
     }).catch(() => {});
   }, [isAdmin]);
+
+  // Check and listen to Supabase Auth Session for abedoni.bd@gmail.com
+  React.useEffect(() => {
+    const checkAuthSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.email?.toLowerCase() === 'abedoni.bd@gmail.com') {
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('abedoni_admin_authed', 'true');
+      } else {
+        setIsAdminAuthenticated(false);
+        sessionStorage.removeItem('abedoni_admin_authed');
+      }
+    };
+
+    checkAuthSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user?.email?.toLowerCase() === 'abedoni.bd@gmail.com') {
+        setIsAdminAuthenticated(true);
+        sessionStorage.setItem('abedoni_admin_authed', 'true');
+      } else {
+        setIsAdminAuthenticated(false);
+        sessionStorage.removeItem('abedoni_admin_authed');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   // Trigger a full-screen grand welcome confetti on page entry
   React.useEffect(() => {
@@ -202,13 +233,21 @@ export default function App() {
         setActiveTab={setActiveTab}
         isAdmin={isAdmin}
         setIsAdmin={setIsAdmin}
+        settings={settings}
       />
 
       {/* Main View Container */}
       <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         {isAdmin ? (
           isAdminAuthenticated ? (
-            <AdminPanel onLogout={() => setIsAdminAuthenticated(false)} />
+            <AdminPanel 
+              onLogout={async () => {
+                await supabase.auth.signOut();
+                setIsAdminAuthenticated(false);
+                sessionStorage.removeItem('abedoni_admin_authed');
+              }}
+              onSettingsUpdated={(newSettings) => setSettings(newSettings)}
+            />
           ) : (
             <AdminAuthModal
               isOpen={true}
@@ -286,9 +325,15 @@ export default function App() {
             
             {/* Brand Intro */}
             <div className="space-y-3 md:col-span-1">
-              <div className="flex items-center gap-2">
-                <img src={settings.logoIconUrl} alt="Icon" className="w-8 h-8 object-contain" />
-                <span className="text-xl font-black text-white">আবেদনী <span className="text-xs bg-blue-600/60 text-blue-200 px-2 py-0.5 rounded-md ml-1 border border-blue-400/30">Abedoni</span></span>
+              <div className="flex flex-col items-start gap-2">
+                <img 
+                  src={settings.logoWordmarkUrl || 'https://raw.githubusercontent.com/tahmidislammunna/tm/refs/heads/main/logo-with-wordmark.jpg'} 
+                  alt="Abedoni Wordmark Logo" 
+                  className="h-11 w-auto object-contain rounded-xl bg-white p-1 shadow-md border border-slate-700/60" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = settings.logoIconUrl || 'https://raw.githubusercontent.com/tahmidislammunna/tm/0a4f98323c65fd4013d3a2fd8d66b2e2d750e5d5/favicon-logo-icon.svg';
+                  }}
+                />
               </div>
               <p className="text-xs text-slate-400 leading-relaxed">
                 SSC ও HSC বোর্ড চ্যালেঞ্জ অনলাইন সেবা। ঘরে বসেই নিরাপদে ও নির্ভরযোগ্যভাবে আবেদন সম্পন্ন করুন।

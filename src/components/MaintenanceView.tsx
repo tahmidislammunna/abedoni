@@ -147,7 +147,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
               >
                 <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-slate-200/90 shadow-xs">
                   <img 
-                    src={settings.logoIconUrl || "https://munna.pro.bd/tmassets/favicon-logo-icon.svg"} 
+                    src={settings.logoIconUrl || "https://raw.githubusercontent.com/tahmidislammunna/tm/0a4f98323c65fd4013d3a2fd8d66b2e2d750e5d5/favicon-logo-icon.svg"} 
                     alt="Abedoni Logo" 
                     className="w-5 h-5 object-contain"
                   />
@@ -328,7 +328,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                   </div>
 
                   <img 
-                    src="https://munna.pro.bd/tmassets/mainwebapppanel.jpeg" 
+                    src="https://raw.githubusercontent.com/tahmidislammunna/tm/refs/heads/main/mainwebapp%20panel.jpeg" 
                     alt="Abedoni Main Application Portal" 
                     className="w-full h-auto rounded-xl object-cover shadow-xs"
                   />
@@ -345,7 +345,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                     <span>Verified Review</span>
                   </div>
                   <img 
-                    src="https://munna.pro.bd/tmassets/student-review.png" 
+                    src="https://raw.githubusercontent.com/tahmidislammunna/tm/refs/heads/main/student%20review.png" 
                     alt="Student Review" 
                     className="w-full h-auto rounded-xl object-cover border border-slate-100"
                   />
@@ -362,7 +362,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                     <span>Shop vs Abedoni</span>
                   </div>
                   <img 
-                    src="https://munna.pro.bd/tmassets/differencebetweenlocalvsabedoniteam.png" 
+                    src="https://raw.githubusercontent.com/tahmidislammunna/tm/refs/heads/main/differencebetweenlocalvsabedoniteam.png" 
                     alt="Local Shop vs Abedoni Comparison" 
                     className="w-full h-auto rounded-xl object-cover border border-slate-100"
                   />

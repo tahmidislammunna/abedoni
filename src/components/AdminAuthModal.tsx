@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, KeyRound, Sparkles, User } from 'lucide-react';
-import { getAppSettings } from '../data/appSettings';
+import { ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, KeyRound, Sparkles, Mail, Loader2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface AdminAuthModalProps {
   isOpen: boolean;
@@ -13,48 +13,54 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
   onAuthenticated,
   onCancel,
 }) => {
-  const [username, setUsername] = useState('admin');
+  const [email, setEmail] = useState('abedoni.bd@gmail.com');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    const settings = getAppSettings();
-    const correctPin = settings.adminPin || '1234';
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
 
-    const adminUsernames = ['admin', 'munna', 'admin-munna', 'abedoni'];
-    const defaultModUsernames = ['moderator', 'mod', 'mod1', 'moderator1', 'staff', 'operator'];
+    if (!cleanEmail || !cleanPassword) {
+      setErrorMsg('ইমেইল এবং পাসওয়ার্ড প্রদান করুন।');
+      return;
+    }
 
-    const u = username.trim().toLowerCase();
-    const p = password.trim();
+    setIsLoading(true);
+    setErrorMsg('');
 
-    const customMod = settings.moderatorUsers?.find(
-      m => m.username.trim().toLowerCase() === u && m.status === 'active'
-    );
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-    const isAdminUser = adminUsernames.includes(u);
-    const isModeratorUser = defaultModUsernames.includes(u) || !!customMod;
+      if (error) {
+        setErrorMsg('ভুল ইমেইল অথবা পাসওয়ার্ড! সঠিক Supabase Admin একাউন্টের তথ্য ব্যবহার করুন।');
+        setIsLoading(false);
+        return;
+      }
 
-    const isAdminPassOk = p === correctPin || p === '1234' || p === 'admin123' || p === 'admin';
-    const isModPassOk = (customMod && p === customMod.pin) || p === 'mod123' || p === '1234' || p === 'moderator' || p === 'staff123' || p === correctPin;
-
-    if (isAdminUser && isAdminPassOk) {
-      sessionStorage.setItem('abedoni_admin_authed', 'true');
-      sessionStorage.setItem('abedoni_admin_role', 'admin');
-      setErrorMsg('');
-      setPassword('');
-      onAuthenticated();
-    } else if (isModeratorUser && isModPassOk) {
-      sessionStorage.setItem('abedoni_admin_authed', 'true');
-      sessionStorage.setItem('abedoni_admin_role', 'moderator');
-      setErrorMsg('');
-      setPassword('');
-      onAuthenticated();
-    } else {
-      setErrorMsg('ভুল ইউজারনেম অথবা পাসওয়ার্ড! সঠিক Admin বা Moderator অ্যাকাউন্ট তথ্য দিয়ে চেষ্টা করুন।');
+      if (data.user && data.user.email?.toLowerCase() === 'abedoni.bd@gmail.com') {
+        sessionStorage.setItem('abedoni_admin_authed', 'true');
+        sessionStorage.setItem('abedoni_admin_role', 'admin');
+        setErrorMsg('');
+        setPassword('');
+        setIsLoading(false);
+        onAuthenticated();
+      } else {
+        await supabase.auth.signOut();
+        setErrorMsg('প্রবেশাধিকার সংরক্ষিত! শুধুমাত্র অনুমোদিত এডমিন (abedoni.bd@gmail.com) লগইন করতে পারবেন।');
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setErrorMsg('লগইন প্রসেস করতে সাময়িক সমস্যা হয়েছে। পরবর্তীতে চেষ্টা করুন।');
+      setIsLoading(false);
     }
   };
 
@@ -84,13 +90,13 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-400/30 text-blue-300 text-[11px] font-bold tracking-wide uppercase font-mono">
               <Sparkles className="w-3 h-3 text-emerald-400" />
-              <span>Restricted Admin Portal</span>
+              <span>Supabase Auth Protected</span>
             </div>
             <h2 className="text-2xl sm:text-3xl font-black text-white mt-1.5">
               অ্যাডমিন লগইন
             </h2>
             <p className="text-xs text-slate-400 font-medium max-w-xs mx-auto mt-1">
-              প্রশাসনিক প্যানেলে প্রবেশ করতে ইউজারনেম ও পাসওয়ার্ড ব্যবহার করুন।
+              প্রশাসনিক প্যানেলে প্রবেশ করতে Supabase Auth ইমেইল ও পাসওয়ার্ড ব্যবহার করুন।
             </p>
           </div>
         </div>
@@ -105,24 +111,24 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
             </div>
           )}
 
-          {/* Username Input */}
+          {/* Email Input */}
           <div className="space-y-1">
             <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-blue-400" />
-              <span>ইউজারনেম (Username):</span>
+              <Mail className="w-3.5 h-3.5 text-blue-400" />
+              <span>এডমিন ইমেইল (Admin Email):</span>
             </label>
 
             <div className="relative">
               <input
-                type="text"
+                type="email"
                 required
-                autoComplete="username"
-                value={username}
+                autoComplete="email"
+                value={email}
                 onChange={(e) => {
-                  setUsername(e.target.value);
+                  setEmail(e.target.value);
                   setErrorMsg('');
                 }}
-                placeholder="ইউজারনেম দিন (e.g. admin)..."
+                placeholder="abedoni.bd@gmail.com..."
                 className="w-full bg-slate-950/90 border-2 border-slate-800 focus:border-blue-500 rounded-2xl px-4 py-3 text-base sm:text-sm font-mono font-bold text-white placeholder-slate-600 outline-none transition-all shadow-inner focus:ring-4 focus:ring-blue-500/20"
               />
             </div>
@@ -162,10 +168,20 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
           <div className="pt-1 space-y-2">
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 text-white font-extrabold py-3.5 rounded-2xl text-sm shadow-xl shadow-blue-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 border border-blue-400/30 hover:scale-[1.01] active:scale-95"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-600 disabled:opacity-50 text-white font-extrabold py-3.5 rounded-2xl text-sm shadow-xl shadow-blue-600/30 transition-all cursor-pointer flex items-center justify-center gap-2 border border-blue-400/30 hover:scale-[1.01] active:scale-95"
             >
-              <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
-              <span>লগইন করুন</span>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>যাচাই করা হচ্ছে...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" />
+                  <span>লগইন করুন</span>
+                </>
+              )}
             </button>
 
             <button
@@ -184,7 +200,7 @@ export const AdminAuthModal: React.FC<AdminAuthModalProps> = ({
         <div className="text-center border-t border-slate-800/80 pt-2.5">
           <p className="text-[10px] text-slate-500 font-mono flex items-center justify-center gap-1">
             <ShieldCheck className="w-3 h-3 text-emerald-500" />
-            <span>256-Bit Encrypted Admin Control Authentication</span>
+            <span>Supabase Auth Token Verification Enabled</span>
           </p>
         </div>
 

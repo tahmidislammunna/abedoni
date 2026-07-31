@@ -12,7 +12,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { SUPPORT_CONFIG } from '../data/boardsAndSubjects';
-import { getAppSettings, AppSettings } from '../data/appSettings';
+import { AppSettings } from '../data/appSettings';
 
 interface HeaderProps {
   activeTab: string;
@@ -31,9 +31,11 @@ export const Header: React.FC<HeaderProps> = ({
   settings
 }) => {
   const [showSubMenu, setShowSubMenu] = useState(false);
-  const currentSettings = settings || getAppSettings();
-  const logoUrl = currentSettings.websiteLogo || currentSettings.logoIconUrl || SUPPORT_CONFIG.logoIconUrl;
-  const logoWordmark = currentSettings.websiteWordmark || currentSettings.logoWordmarkUrl;
+
+  const logoIconUrl = settings?.logoIconUrl || SUPPORT_CONFIG.logoIconUrl;
+  const siteTitle = settings?.siteName ? settings.siteName.split(' ')[0] : 'আবেদনী';
+  const heroSubtitle = settings?.heroHeadline || 'আবেদন হোক সহজ';
+  const noticeText = settings?.noticeBannerText || 'SSC Board Challenge 2026 ঘরে বসেই সহজ ও দ্রুত আবেদন প্রসেসিং ডিজিটাল সেবা';
 
   return (
     <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-xs transition-all">
@@ -43,7 +45,7 @@ export const Header: React.FC<HeaderProps> = ({
           ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা
         </span>
         <span className="hidden sm:inline text-white/50">•</span>
-        <span className="truncate">{currentSettings.noticeBannerText || 'SSC Board Challenge 2026 ঘরে বসেই সহজ ও দ্রুত আবেদন প্রসেসিং ডিজিটাল সেবা'}</span>
+        <span className="truncate">{noticeText}</span>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -55,10 +57,10 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => { setActiveTab('home'); setIsAdmin(false); }}
               className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer group"
             >
-              <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-white p-1 border border-blue-100 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 sm:w-13 sm:h-13 rounded-2xl bg-white p-1 border border-blue-100 shadow-md group-hover:scale-105 transition-transform flex items-center justify-center shrink-0 overflow-hidden">
                 <img 
-                  src={logoUrl} 
-                  alt={currentSettings.siteName || "Abedoni Logo Icon"} 
+                  src={logoIconUrl} 
+                  alt="Abedoni Logo Icon" 
                   className="w-full h-full object-contain"
                   onError={(e) => {
                     (e.target as HTMLElement).style.display = 'none';
@@ -69,12 +71,8 @@ export const Header: React.FC<HeaderProps> = ({
                 />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-bn leading-tight">
-                  {currentSettings.siteName || 'আবেদনী'}
-                </span>
-                <p className="text-[10px] sm:text-xs lg:text-sm text-emerald-600 font-bold font-bn">
-                  {currentSettings.heroHeadline || 'আবেদন হোক সহজ'}
-                </p>
+                <span className="text-xl sm:text-2xl lg:text-3xl font-black text-slate-900 tracking-tight font-bn leading-tight">{siteTitle}</span>
+                <p className="text-[10px] sm:text-xs lg:text-sm text-emerald-600 font-bold font-bn">{heroSubtitle}</p>
               </div>
             </div>
           </div>
@@ -197,11 +195,11 @@ export const Header: React.FC<HeaderProps> = ({
             </a>
 
             <a 
-              href="https://munna.pro.bd/result" 
+              href="https://eboardresults.com/v2/home" 
               target="_blank" 
               rel="noopener noreferrer"
               className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs font-bold border border-emerald-500 transition-all flex items-center gap-1 sm:gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-xs"
-              title="রেজাল্ট দেখতে ক্লিক করুন"
+              title="বোর্ড ফলাফল দেখতে ক্লিক করুন"
             >
               <FileText className="w-3.5 h-3.5 text-emerald-200 shrink-0" />
               <span>রেজাল্ট দেখুন</span>

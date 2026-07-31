@@ -164,7 +164,7 @@ export const SUPPORT_CONFIG = {
   rocketNumber: '01720990882',
   supportHours: 'সকাল ৭:০০ টা - রাত ১১:০০ টা (প্রতিদিন)',
   officialEmail: 'abedoni.bd@gmail.com',
-  logoIconUrl: 'https://munna.pro.bd/tmassets/favicon-logo-icon.svg',
-  logoWordmarkUrl: 'https://munna.pro.bd/tmassets/logo-with-wordmark.jpg',
+  logoIconUrl: 'https://raw.githubusercontent.com/tahmidislammunna/tm/0a4f98323c65fd4013d3a2fd8d66b2e2d750e5d5/favicon-logo-icon.svg',
+  logoWordmarkUrl: 'https://raw.githubusercontent.com/tahmidislammunna/tm/refs/heads/main/logo-with-wordmark.jpg',
 };
 
