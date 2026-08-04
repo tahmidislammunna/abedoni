@@ -20,6 +20,7 @@ export interface AppSettings {
   bkashNumber: string;
   nagadNumber: string;
   rocketNumber: string;
+  banglaQrImageUrl?: string;
   officialBoardFee: number;
   abedoniServiceFee: number;
   smsFeePerSubject: number;
@@ -51,6 +52,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   bkashNumber: '01720990882',
   nagadNumber: '01720990882',
   rocketNumber: '01720990882',
+  banglaQrImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg',
   officialBoardFee: 175,
   abedoniServiceFee: 99,
   smsFeePerSubject: 6,

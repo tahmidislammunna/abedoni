@@ -30,7 +30,7 @@ export type OrderStatus =
   | 'Updated' 
   | 'Cancelled';
 
-export type PaymentMethod = 'bKash' | 'Nagad' | 'Rocket' | 'Upay';
+export type PaymentMethod = 'Bangla QR' | 'bKash' | 'Nagad' | 'Rocket' | 'Upay';
 
 export interface BoardChallengeOrder {
   id: string; // e.g. ABD-2026-10492

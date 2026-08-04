@@ -181,24 +181,13 @@ export const Header: React.FC<HeaderProps> = ({
             </nav>
           </div>
 
-          {/* Right Column: Action Buttons / Backup Site Link / Result Link */}
+          {/* Right Column: Action Buttons / Result Link */}
           <div className="flex items-center justify-end shrink-0 gap-1.5 sm:gap-2">
             <a 
-              href="https://abedoni-bd.vercel.app" 
+              href="https://munna.pro.bd/result" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-700 hover:text-blue-800 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs font-bold border border-blue-200 transition-all flex items-center gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-2xs"
-              title="Abedoni Backup Site"
-            >
-              <span>ব্যাকআপ সাইট</span>
-              <ExternalLink className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-            </a>
-
-            <a 
-              href="https://eboardresults.com/v2/home" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-full text-xs font-bold border border-emerald-500 transition-all flex items-center gap-1 sm:gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-xs"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1.5 sm:px-3.5 sm:py-2 rounded-full text-xs font-bold border border-emerald-500 transition-all flex items-center gap-1 sm:gap-1.5 shrink-0 hover:scale-105 active:scale-95 shadow-xs"
               title="বোর্ড ফলাফল দেখতে ক্লিক করুন"
             >
               <FileText className="w-3.5 h-3.5 text-emerald-200 shrink-0" />

@@ -162,6 +162,8 @@ export const SUPPORT_CONFIG = {
   bkashNumber: '01720990882',
   nagadNumber: '01720990882',
   rocketNumber: '01720990882',
+  banglaQrImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg',
+  banglaQrAccountInfo: 'Account Name: MD. MOSTAKIM HOSSAIN, BRANCH: MOHAMMADPUR Dutch Bangla Bank, (TID - 30167769)',
   supportHours: 'সকাল ৭:০০ টা - রাত ১১:০০ টা (প্রতিদিন)',
   officialEmail: 'abedoni.bd@gmail.com',
   logoIconUrl: 'https://raw.githubusercontent.com/tahmidislammunna/tm/0a4f98323c65fd4013d3a2fd8d66b2e2d750e5d5/favicon-logo-icon.svg',

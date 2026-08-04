@@ -14,7 +14,9 @@ import {
   ShieldCheck, 
   AlertCircle,
   Download,
-  Printer
+  Printer,
+  X,
+  QrCode
 } from 'lucide-react';
 import { BOARDS_LIST, SSC_SUBJECTS, generateStudentWhatsappMessage, getWhatsappDirectUrl } from '../data/boardsAndSubjects';
 import { BoardChallengeOrder, EducationBoard, ExamType, PaymentMethod } from '../types';
@@ -84,10 +86,11 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   const [selectedSubjectCodes, setSelectedSubjectCodes] = useState<string[]>([]);
 
   // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('bKash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Bangla QR');
   const [paymentSenderPhone, setPaymentSenderPhone] = useState('');
   const [trxId, setTrxId] = useState('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showEnlargedQr, setShowEnlargedQr] = useState<boolean>(false);
 
   // Fee Calculations
   const boardFeePerSub = settings.officialBoardFee || 175;
@@ -150,6 +153,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   };
 
   const getPaymentNumber = (method: PaymentMethod) => {
+    if (method === 'Bangla QR') return settings.bkashNumber;
     if (method === 'bKash') return settings.bkashNumber;
     if (method === 'Nagad') return settings.nagadNumber;
     return settings.rocketNumber || settings.bkashNumber;
@@ -456,43 +460,50 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
 
       {/* STEP 3: PAYMENT METHOD & TRANSACTION ID */}
       {currentStep === 3 && (
-        <form onSubmit={handleSubmitOrder} className="bg-white/60 backdrop-blur-2xl p-6 sm:p-8 rounded-[32px] border border-white/80 shadow-xl space-y-6">
-          <h2 className="text-xl font-bold text-slate-900 border-b border-slate-200/60 pb-3 flex items-center gap-2">
-            <span className="w-2 h-6 bg-blue-600 rounded-full" />
-            পেমেন্ট ও অর্ডার সাবমিশন
-          </h2>
-
-          {/* Amount Box */}
-          <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl flex items-center justify-between text-emerald-900">
-            <div>
-              <p className="text-xs font-bold">পরিশোধযোগ্য মোট ফি</p>
-              <p className="text-xs text-emerald-700">{selectedSubjectCodes.length}টি বিষয়ের জন্য সম্পূর্ণ ফি</p>
+        <form onSubmit={handleSubmitOrder} className="bg-white p-3.5 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-xl space-y-3.5 sm:space-y-5 font-bn">
+          
+          {/* Header & Total Fee Summary Bar (Payment Gateway Style) */}
+          <div className="flex items-center justify-between bg-slate-900 text-white p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-xs">
+            <div className="space-y-0.5">
+              <span className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider block">
+                SSL/MFS পেমেন্ট গেটওয়ে
+              </span>
+              <h2 className="text-sm sm:text-base font-black text-white flex items-center gap-1.5">
+                <span>পেমেন্ট ও অর্ডার সাবমিশন</span>
+              </h2>
             </div>
-            <div className="text-2xl font-black text-emerald-700 font-mono">
-              ৳{totalFee}
+            <div className="text-right">
+              <span className="text-[10px] text-emerald-400 font-bold block">{selectedSubjectCodes.length}টি বিষয়</span>
+              <span className="text-lg sm:text-2xl font-black text-emerald-400 font-mono leading-none">৳{totalFee} BDT</span>
             </div>
           </div>
 
-          {/* Payment Method Selector */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">
-              পেমেন্ট মাধ্যম নির্বাচন করুন
+          {/* Payment Method Selector Grid (4 cols single row on mobile) */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-800 flex items-center justify-between">
+              <span>পেমেন্ট মাধ্যম নির্বাচন করুন *</span>
+              <span className="text-[10px] text-slate-500 font-normal">১টি সিলেক্ট করুন</span>
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
               {[
                 { 
+                  id: 'Bangla QR', 
+                  name: 'বাংলা QR', 
+                  logo: 'https://upload.wikimedia.org/wikipedia/commons/4/4c/Bangla_QR_Logo.svg' 
+                },
+                { 
                   id: 'bKash', 
-                  name: 'বিকাশ (bKash)', 
+                  name: 'bKash', 
                   logo: 'https://upload.wikimedia.org/wikipedia/en/6/68/BKash_logo.svg' 
                 },
                 { 
                   id: 'Nagad', 
-                  name: 'নগদ (Nagad)', 
+                  name: 'Nagad', 
                   logo: 'https://upload.wikimedia.org/wikipedia/bn/9/97/%E0%A6%A8%E0%A6%97%E0%A6%A6%E0%A7%87%E0%A6%B0_%E0%A6%B2%E0%A7%8B%E0%A6%97%E0%A7%8B.svg' 
                 },
                 { 
                   id: 'Rocket', 
-                  name: 'রকেট (Rocket)', 
+                  name: 'Rocket', 
                   logo: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Rocket_mobile_banking_logo.svg' 
                 },
               ].map(item => {
@@ -503,21 +514,26 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                     key={pm}
                     type="button"
                     onClick={() => setPaymentMethod(pm)}
-                    className={`p-3 rounded-2xl text-xs font-bold border transition-all flex flex-col items-center justify-center gap-2 cursor-pointer ${
+                    className={`p-1.5 sm:p-2.5 rounded-xl text-[11px] sm:text-xs font-bold border transition-all flex flex-col items-center justify-center gap-1 cursor-pointer relative ${
                       isSelected
-                        ? 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-500/30'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-md ring-2 ring-slate-800/30'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="h-9 w-full bg-white/90 p-1 rounded-xl flex items-center justify-center border border-slate-100 shadow-2xs">
+                    {pm === 'Bangla QR' && (
+                      <span className="absolute -top-2 bg-emerald-600 text-white text-[8px] font-black px-1.5 py-0.2 rounded-full uppercase tracking-wider shadow-xs">
+                        QR
+                      </span>
+                    )}
+                    <div className="h-6 sm:h-8 w-full bg-white p-0.5 rounded-lg flex items-center justify-center border border-slate-100 shadow-2xs">
                       <img 
                         src={item.logo} 
                         alt={pm} 
-                        className="max-h-7 max-w-full object-contain" 
+                        className="max-h-5 sm:max-h-6 max-w-full object-contain" 
                         referrerPolicy="no-referrer"
                       />
                     </div>
-                    <span>{pm}</span>
+                    <span className="truncate w-full text-center leading-tight">{item.name}</span>
                   </button>
                 );
               })}
@@ -525,51 +541,161 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
           </div>
 
           {/* Instructions for Selected Payment Method */}
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3 text-xs">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900">
-                {paymentMethod} পার্সোনাল নম্বর (Send Money করুন):
-              </span>
-              <button
-                type="button"
-                onClick={() => copyToClipboard(getPaymentNumber(paymentMethod), 'number')}
-                className="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1 bg-white px-2.5 py-1 rounded-md border border-slate-200 cursor-pointer"
-              >
-                {copiedField === 'number' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copiedField === 'number' ? 'কপি হয়েছে' : 'নম্বর কপি করুন'}</span>
-              </button>
-            </div>
+          {paymentMethod === 'Bangla QR' ? (
+            <div className="bg-slate-50 p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3.5 text-xs">
+              
+              {/* Trust & Verified Badge with soft glow */}
+              <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-300/80 p-2.5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.12)] flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <div className="p-1 bg-emerald-600 text-white rounded-lg shadow-xs animate-bounce">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="font-black text-emerald-900 text-xs sm:text-sm block leading-tight">
+                      বাংলাদেশ ব্যাংক অনুমোদিত ও ভেরিফাইড পেমেন্ট মেথড
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-emerald-800 font-bold block">
+                      <b>১০০% নিরাপদ, ১০০% সরকারি ব্যাংকিং প্রটোকল সমর্থিত</b>
+                    </span>
+                  </div>
+                </div>
 
-            <div className="bg-white p-3.5 rounded-xl border border-slate-300 font-mono text-base sm:text-lg font-black text-center text-blue-900 shadow-inner">
-              {getPaymentNumber(paymentMethod)}
-            </div>
+                <span className="bg-emerald-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                  Verified Official QR
+                </span>
+              </div>
 
-            <ol className="list-decimal list-inside space-y-1 text-slate-600">
-              <li>আপনার {paymentMethod} অ্যাপ বা *247# ডায়াল করে Send Money অপশনে যান।</li>
-              <li>ওপরের নম্বরে সঠিক ৳{totalFee} টাকা পাঠান।</li>
-              <li>পেমেন্ট সফল হওয়ার পর প্রাপ্ত Transaction ID (TrxID) নিচে ইনপুট দিন।</li>
-            </ol>
-          </div>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Bangla_QR_Logo.svg" 
+                    alt="Bangla QR Logo" 
+                    className="h-7 sm:h-8 w-auto object-contain bg-white p-0.5 rounded border border-slate-200" 
+                  />
+                  <div>
+                    <span className="font-bold text-slate-900 text-xs sm:text-sm block leading-tight">বাংলা QR - ইনস্ট্যান্ট স্ক্যান পেমেন্ট</span>
+                    <span className="text-[10px] text-slate-500 block leading-tight">সকল MFS (bKash, Nagad, Rocket) & Bank Apps সমর্থিত</span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-100 text-emerald-900 border border-emerald-300 px-2.5 py-1 rounded-full text-[11px] font-black shrink-0">
+                  ৳{totalFee} BDT
+                </div>
+              </div>
+
+              {/* QR Image Display */}
+              <div className="flex flex-col md:flex-row items-center gap-4 sm:gap-6 bg-white p-3.5 sm:p-5 rounded-xl border border-slate-200 shadow-2xs">
+                <div className="shrink-0 flex flex-col items-center gap-2 w-full md:w-auto">
+                  <div 
+                    onClick={() => setShowEnlargedQr(true)}
+                    className="p-0 bg-white rounded-2xl border-2 border-slate-900 shadow-lg overflow-hidden flex items-center justify-center cursor-pointer hover:scale-[1.01] transition-transform relative group w-full max-w-[320px] sm:max-w-[290px] md:w-64 lg:w-72"
+                  >
+                    <img 
+                      src={settings.banglaQrImageUrl || "https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg"} 
+                      alt="Scan Bangla QR" 
+                      className="w-full h-full aspect-square object-cover sm:object-contain bg-white"
+                    />
+                    <div className="absolute inset-0 bg-slate-950/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl flex items-center justify-center">
+                      <span className="bg-slate-900 text-white text-[11px] font-bold px-3 py-1.5 rounded-xl shadow-md">
+                        🔍 বড় করে দেখুন (Zoom)
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEnlargedQr(true)}
+                    className="text-[11px] font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3.5 py-1 rounded-full border border-slate-300 flex items-center gap-1 cursor-pointer transition shadow-2xs"
+                  >
+                    <span>🔍 ট্যাপ করে ফুলস্ক্রিন QR দেখুন</span>
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-slate-700 w-full">
+                  {/* Account Info Details Box */}
+                  <div className="bg-amber-50/80 border border-amber-200 p-2.5 sm:p-3 rounded-xl space-y-1">
+                    <span className="text-[10px] uppercase font-black text-amber-800 tracking-wider block">
+                      অফিশিয়াল মার্চেন্ট / ব্যাংক একাউন্ট ডিটেইলস:
+                    </span>
+                    <p className="text-xs sm:text-xs font-bold text-slate-900 font-mono leading-tight">
+                      {settings.banglaQrAccountInfo || 'Account Name: MD. MOSTAKIM HOSSAIN, BRANCH: MOHAMMADPUR Dutch Bangla Bank, (TID - 30167769)'}
+                    </p>
+                  </div>
+
+                  <h4 className="font-bold text-slate-900 text-xs sm:text-sm">বাংলা QR পেমেন্ট নির্দেশিকা:</h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-[11px] sm:text-xs text-slate-600 leading-relaxed">
+                    <li>bKash / Nagad / Rocket বা যেকোনো <strong>Bank App</strong> খুলুন।</li>
+                    <li>অ্যাপের <strong>"Scan QR" / "Bangla QR"</strong> সিলেক্ট করে ওপরের কোডটি স্ক্যান করুন।</li>
+                    <li>সঠিক ফি <strong>৳{totalFee} BDT</strong> পেমেন্ট সম্পন্ন করুন।</li>
+                    <li>পেমেন্ট শেষে প্রাপ্ত <strong>Transaction ID (TrxID)</strong> ও প্রেরক নম্বরটি নিচে ইনপুট দিন।</li>
+                  </ol>
+
+                  {/* Backup Number Option */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] gap-2 flex-wrap">
+                    <span className="text-slate-500 font-semibold">স্ক্যানিং সমস্যা হলে ব্যাকআপ Send Money নম্বর:</span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(getPaymentNumber('Bangla QR'), 'number')}
+                      className="text-slate-900 font-mono font-bold hover:bg-slate-200 flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-300 cursor-pointer shrink-0"
+                    >
+                      <span>{getPaymentNumber('Bangla QR')}</span>
+                      {copiedField === 'number' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-slate-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 space-y-2.5 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-900 text-xs">
+                  {paymentMethod} পার্সোনাল নম্বর (Send Money):
+                </span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                  ফি: ৳{totalFee} BDT
+                </span>
+              </div>
+
+              <div className="bg-slate-900 text-white p-2.5 sm:p-3 rounded-xl flex items-center justify-between shadow-xs">
+                <span className="font-mono text-base sm:text-lg font-black text-emerald-400 tracking-wider">
+                  {getPaymentNumber(paymentMethod)}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(getPaymentNumber(paymentMethod), 'number')}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-2.5 py-1 rounded-lg text-xs flex items-center gap-1 cursor-pointer transition"
+                >
+                  {copiedField === 'number' ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedField === 'number' ? 'কপি হয়েছে' : 'নম্বর কপি'}</span>
+                </button>
+              </div>
+
+              <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-600">
+                <li>আপনার {paymentMethod} অ্যাপ থেকে Send Money অপশনে যান।</li>
+                <li>ওপরের নম্বরে সঠিক <strong>৳{totalFee}</strong> টাকা পাঠান।</li>
+                <li>পেমেন্ট শেষে প্রাপ্ত Transaction ID (TrxID) নিচে ইনপুট দিন।</li>
+              </ol>
+            </div>
+          )}
 
           {/* Sender Phone & TrxID inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-4 text-xs sm:text-sm">
             <div>
-              <label className="block font-bold text-slate-800 mb-1">
-                প্রেরকের মোবাইল নম্বর (Sender Number) *
+              <label className="block font-bold text-slate-800 mb-1 text-xs">
+                প্রেরকের মোবাইল নম্বর (Sender Mobile) *
               </label>
               <input
                 type="tel"
                 required
                 maxLength={11}
-                placeholder="যে নম্বর থেকে টাকা পাঠিয়েছেন"
+                placeholder="যেমন: 01700000000"
                 value={paymentSenderPhone}
                 onChange={e => setPaymentSenderPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full bg-white border border-slate-300 rounded-2xl p-3.5 font-mono focus:ring-2 focus:ring-blue-500 shadow-xs"
+                className="w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-xl p-2.5 font-mono text-xs sm:text-sm focus:ring-2 focus:ring-slate-400 shadow-2xs"
               />
             </div>
 
             <div>
-              <label className="block font-bold text-slate-800 mb-1">
+              <label className="block font-bold text-slate-800 mb-1 text-xs">
                 ট্রানজেকশন আইডি (TrxID) *
               </label>
               <input
@@ -578,32 +704,32 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                 placeholder="যেমন: 9K4M2L8PQ"
                 value={trxId}
                 onChange={e => setTrxId(e.target.value.toUpperCase())}
-                className="w-full bg-white border border-slate-300 rounded-2xl p-3.5 font-mono font-bold focus:ring-2 focus:ring-blue-500 uppercase shadow-xs"
+                className="w-full bg-slate-50 focus:bg-white border border-slate-300 rounded-xl p-2.5 font-mono font-bold text-xs sm:text-sm focus:ring-2 focus:ring-slate-400 uppercase shadow-2xs text-slate-900"
               />
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
+          <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setCurrentStep(2)}
-              className="text-slate-600 hover:text-slate-900 font-medium text-xs sm:text-sm flex items-center gap-1 cursor-pointer"
+              className="text-slate-600 hover:text-slate-900 font-bold text-xs flex items-center gap-1 cursor-pointer px-2 py-2 rounded-lg hover:bg-slate-100 transition"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-3.5 h-3.5" />
               <span>বিষয় পরিবর্তন</span>
             </button>
 
             <button
               type="submit"
               disabled={isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-3.5 rounded-2xl text-sm transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-600/25 disabled:opacity-50"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-600/20 disabled:opacity-50"
             >
               {isSubmitting ? (
-                <span>প্রসেস করা হচ্ছে...</span>
+                <span>সাবমিট হচ্ছে...</span>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4 text-emerald-200" />
-                  <span>অর্ডার কনফার্ম ও রসিদ গ্রহণ করুন</span>
+                  <span>পেমেন্ট নিশ্চিত করুন & জমা দিন (৳{totalFee})</span>
+                  <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
@@ -757,6 +883,62 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
             </button>
           </div>
 
+        </div>
+      )}
+
+      {/* ENLARGED FULLSCREEN QR MODAL */}
+      {showEnlargedQr && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowEnlargedQr(false)}
+        >
+          <div 
+            className="bg-white p-5 sm:p-6 rounded-3xl max-w-sm sm:max-w-md w-full border border-slate-200 shadow-2xl space-y-4 text-center relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <img 
+                  src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Bangla_QR_Logo.svg" 
+                  alt="Bangla QR Logo" 
+                  className="h-6 sm:h-7 w-auto" 
+                />
+                <span className="font-bold text-slate-900 text-xs sm:text-sm">বাংলা QR (Scan Code)</span>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowEnlargedQr(false)}
+                className="p-1.5 rounded-full text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-0 bg-white rounded-2xl border-2 border-slate-900 shadow-inner overflow-hidden flex items-center justify-center">
+              <img 
+                src={settings.banglaQrImageUrl || "https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg"} 
+                alt="Bangla QR Code Enlarged" 
+                className="w-full h-auto max-h-[70vh] aspect-square object-contain bg-white"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <div className="text-emerald-700 font-extrabold text-lg font-mono">
+                প্রদেয় ফি: ৳{totalFee} BDT
+              </div>
+              <p className="text-xs text-slate-500 font-medium">
+                যেকোনো MFS (bKash, Nagad, Rocket) অথবা Bank App দিয়ে আপনার ফোন দিয়ে স্ক্যান করুন।
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowEnlargedQr(false)}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer"
+            >
+              বন্ধ করুন (Close)
+            </button>
+          </div>
         </div>
       )}
 

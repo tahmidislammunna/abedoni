@@ -35,6 +35,7 @@ import {
   TrendingUp,
   UserPlus,
   Edit,
+  QrCode,
   X
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
@@ -48,7 +49,7 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpdated }) => {
-  const [activeTab, setActiveTab] = useState<'orders' | 'settings'>('orders');
+  const [activeTab, setActiveTab] = useState<'orders' | 'analytics' | 'settings'>('orders');
   const [settingsSubTab, setSettingsSubTab] = useState<'maintenance' | 'branding' | 'payments' | 'support' | 'policies' | 'whatsapp' | 'system' | 'moderators'>('maintenance');
   
   const [orders, setOrders] = useState<BoardChallengeOrder[]>([]);
@@ -390,6 +391,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   const dailyNetIncomeBDT = todayOrders.reduce((sum, o) => sum + (o.platformFee || 99), 0);
   const totalNetIncomeBDT = orders.reduce((sum, o) => sum + (o.platformFee || 99), 0);
 
+  // Detailed Analytics Breakdown
+  const boardCounts = BOARDS_LIST.map(b => {
+    const count = orders.filter(o => o.board === b.code).length;
+    return { ...b, count };
+  }).sort((a, b) => b.count - a.count);
+
+  const banglaQrCount = orders.filter(o => (o.paymentMethod || '').toLowerCase().includes('bangla') || (o.paymentMethod || '').toLowerCase().includes('qr')).length;
+  const bkashCount = orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'bkash').length;
+  const nagadCount = orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'nagad').length;
+  const rocketCount = orders.filter(o => (o.paymentMethod || '').toLowerCase() === 'rocket').length;
+
   const handleUpdateOrderStatus = async (
     orderId: string, 
     newStatus: OrderStatus, 
@@ -489,49 +501,50 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
     <div className="space-y-8 pb-20 font-bn max-w-7xl mx-auto">
       
       {/* Top Header & Navigation Bar */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-200/80 pb-4 mb-2">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">
-              {adminRole === 'moderator' ? 'মডারেটর কন্ট্রোল প্যানেল' : 'আবেদনী অ্যাডমিন কন্ট্রোল প্যানেল'}
-            </h1>
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-mono font-bold ${
-              adminRole === 'moderator' ? 'bg-amber-500 text-slate-950' : 'bg-slate-900 text-white'
-            }`}>
-              {adminRole === 'moderator' ? 'MODERATOR' : 'ADMIN V2.8'}
-            </span>
-
-            {/* Inactivity Auto-Logout Badge */}
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-900 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-xs">
-              <Clock className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-              <span>নিষ্ক্রিয়তা নিরাপত্তা: ১০ মি. ({inactivityMinutesLeft} মি.)</span>
-            </span>
-          </div>
-          <p className="text-slate-600 text-xs sm:text-sm mt-1">
-            SSC Board Challenge 2026 পেমেন্ট ভেরিফিকেশন, টেলিটক অটো-কমান্ড, ওয়াটসঅ্যাপ API এবং মডারেটর ইউজার ম্যানেজমেন্ট
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-2">
+        <div className="flex items-center gap-2">
+          <h1 className="text-lg font-bold text-slate-900 tracking-tight">
+            {adminRole === 'moderator' ? 'মডারেটর প্যানেল' : 'অ্যাডমিন প্যানেল'}
+          </h1>
+          <span className="text-[10px] bg-slate-100 text-slate-700 font-mono font-bold px-2 py-0.5 rounded border border-slate-200">
+            {adminRole === 'moderator' ? 'MOD' : 'V2.8'}
+          </span>
+          <span className="text-[10px] text-slate-500 font-mono flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded border border-slate-200" title="10 মিনিট নিষ্ক্রিয়তা সিকিউরিটি টাইমার">
+            <Clock className="w-3 h-3 text-slate-400" />
+            <span>{inactivityMinutesLeft}m</span>
+          </span>
         </div>
 
         {/* Tab Switcher & Logout */}
-        <div className="flex items-center gap-2 bg-slate-200/80 p-1.5 rounded-2xl w-full sm:w-auto overflow-x-auto no-scrollbar shrink-0">
+        <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar shrink-0">
           <button
             onClick={() => { setActiveTab('orders'); setSelectedOrder(null); }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'orders' && !selectedOrder ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-700 hover:text-slate-900'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              activeTab === 'orders' && !selectedOrder ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Users className="w-4 h-4" />
+            <Users className="w-3.5 h-3.5" />
             <span>অর্ডার তালিকা ({totalOrdersCount})</span>
           </button>
 
           <button
-            onClick={() => { setActiveTab('settings'); setSelectedOrder(null); }}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
-              activeTab === 'settings' ? 'bg-white text-blue-700 shadow-sm' : 'text-slate-700 hover:text-slate-900'
+            onClick={() => { setActiveTab('analytics'); setSelectedOrder(null); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              activeTab === 'analytics' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Sliders className="w-4 h-4" />
-            <span>অ্যাপ সেটিংস কাস্টমাইজার</span>
+            <TrendingUp className="w-3.5 h-3.5" />
+            <span>এনালাইটিক্স</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('settings'); setSelectedOrder(null); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
+              activeTab === 'settings' ? 'bg-slate-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>সেটিংস</span>
           </button>
 
           <button
@@ -544,10 +557,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 window.location.href = '/';
               }
             }}
-            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 ml-auto"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-200 hover:bg-rose-600 hover:text-white text-slate-700 transition flex items-center gap-1 cursor-pointer shrink-0 ml-auto"
             title="Exit Admin Panel & Log Out"
           >
-            <LogOut className="w-4 h-4" />
+            <LogOut className="w-3.5 h-3.5" />
             <span>লগআউট</span>
           </button>
         </div>
@@ -1020,56 +1033,150 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
           </div>
 
         </div>
-      ) : activeTab === 'orders' ? (
+      ) : activeTab === 'analytics' ? (
         /* ------------------------------------------------------------- */
-        /* 2. ORDERS LIST TABLE VIEW */
+        /* 2. ANALYTICS & REPORTING TAB */
         /* ------------------------------------------------------------- */
-        <>
-          {/* Metrics Row & Daily Income Report Without Board Fee */}
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+            <div>
+              <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-slate-700" />
+                <span>আবেদনী সমগ্রিক এনালাইটিক্স ও রিপোর্ট</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">আবেদন সংখ্যা, সার্ভিস চার্জ ইনকাম ও বোর্ডভিত্তিক পরিসংখ্যান</p>
+            </div>
+            <button
+              onClick={handleExportCSV}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              <span>CSV রিপোর্ট ডাউনলোড</span>
+            </button>
+          </div>
+
+          {/* Key Metrics Overview Cards (Clean Monochrome / Slate Palette) */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            <div className="bg-white/70 backdrop-blur-xl p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-white/80 shadow-md space-y-1">
-              <span className="text-xs text-slate-500 font-bold">মোট আবেদন</span>
-              <p className="text-xl sm:text-2xl font-black text-slate-900 font-mono">{totalOrdersCount}</p>
-            </div>
-            <div className="bg-amber-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-amber-200 shadow-md space-y-1">
-              <span className="text-xs text-amber-800 font-bold">পেন্ডিং আবেদন</span>
-              <p className="text-xl sm:text-2xl font-black text-amber-900 font-mono">{pendingCount}</p>
-            </div>
-            <div className="bg-blue-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-blue-200 shadow-md space-y-1">
-              <span className="text-xs text-blue-800 font-bold">Processing by Abedoni</span>
-              <p className="text-xl sm:text-2xl font-black text-blue-900 font-mono">{processingCount}</p>
-            </div>
-            <div className="bg-emerald-50/80 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl border border-emerald-200 shadow-md space-y-1">
-              <span className="text-xs text-emerald-800 font-bold">সম্পন্ন (Completed)</span>
-              <p className="text-xl sm:text-2xl font-black text-emerald-900 font-mono">{completedCount}</p>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+              <span className="text-xs text-slate-500 font-bold block">মোট আবেদন</span>
+              <p className="text-2xl font-black text-slate-900 font-mono">{totalOrdersCount}</p>
+              <span className="text-[10px] text-slate-400 font-mono">সর্বমোট আবেদনপত্র</span>
             </div>
 
-            {/* Daily Net Profit Report Card (Without Board Fee) */}
-            <div className="bg-gradient-to-br from-emerald-900 via-slate-900 to-teal-950 text-white p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl space-y-1 col-span-2 sm:col-span-2 shadow-xl border border-emerald-500/30">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-emerald-300 font-black flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-emerald-400" />
-                  <span>দৈনিক নিট ইনকাম (বোর্ড ফি ব্যতীত)</span>
-                </span>
-                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
-                  আজকের লাভ
-                </span>
-              </div>
-              <div className="flex items-baseline justify-between pt-1">
-                <div>
-                  <p className="text-xl sm:text-3xl font-black text-emerald-400 font-mono">৳{dailyNetIncomeBDT} BDT</p>
-                  <p className="text-[10px] text-slate-300">আজকে মোট {todayOrders.length}টি আবেদনের সার্ভিস চার্জ</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 block font-bold">সর্বমোট প্ল্যাটফর্ম ফি</span>
-                  <span className="text-sm font-black text-teal-300 font-mono">৳{totalNetIncomeBDT} BDT</span>
-                </div>
-              </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+              <span className="text-xs text-slate-500 font-bold block">পেন্ডিং আবেদন</span>
+              <p className="text-2xl font-black text-slate-900 font-mono">{pendingCount}</p>
+              <span className="text-[10px] text-slate-500 font-bold">অপেক্ষমান</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+              <span className="text-xs text-slate-500 font-bold block">প্রসেসিং (Processing)</span>
+              <p className="text-2xl font-black text-slate-900 font-mono">{processingCount}</p>
+              <span className="text-[10px] text-slate-500 font-bold">কাজ চলছে</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+              <span className="text-xs text-slate-500 font-bold block">সম্পন্ন (Completed)</span>
+              <p className="text-2xl font-black text-slate-900 font-mono">{completedCount}</p>
+              <span className="text-[10px] text-slate-500 font-bold">বোর্ডে জমা সম্পন্ন</span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
+              <span className="text-xs text-slate-500 font-bold block">আজকের নিট প্রফিট</span>
+              <p className="text-2xl font-black text-slate-900 font-mono">৳{dailyNetIncomeBDT}</p>
+              <span className="text-[10px] text-slate-400">আজকের {todayOrders.length} টি আবেদন</span>
+            </div>
+
+            <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-xs space-y-1">
+              <span className="text-xs text-slate-300 font-bold block">মোট নিট ইনকাম</span>
+              <p className="text-2xl font-black text-emerald-400 font-mono">৳{totalNetIncomeBDT}</p>
+              <span className="text-[10px] text-slate-400">বোর্ড ফি ব্যতীত সার্ভিস লাভ</span>
             </div>
           </div>
 
-          {/* Filters & Export Bar */}
-          <div className="bg-white/70 backdrop-blur-xl p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-white/80 shadow-md flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Detailed Distribution Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            {/* Board Distribution */}
+            <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 className="text-sm font-bold text-slate-900">
+                  বোর্ডভিত্তিক আবেদনের বিন্যাস (Education Boards Breakdown)
+                </h3>
+                <span className="text-xs font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                  Total: {totalOrdersCount}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {boardCounts.map(b => (
+                  <div key={b.code} className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs block">{b.codeSms}</span>
+                      <span className="text-[10px] text-slate-500 block">{b.nameBn}</span>
+                    </div>
+                    <span className="font-mono font-black text-slate-900 text-sm bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {b.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Method Breakdown & Revenue Overview */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-3">
+                পেমেন্ট মেথড পরিসংখ্যান
+              </h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center justify-between bg-slate-900 text-white p-3 rounded-xl shadow-2xs">
+                  <span className="font-bold">Bangla QR (বাংলা কিউআর)</span>
+                  <span className="font-mono font-bold bg-emerald-500 text-slate-950 px-2.5 py-0.5 rounded">
+                    {banglaQrCount} টি
+                  </span>
+                </div>
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">bKash (বিকাশ)</span>
+                  <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded border border-slate-200">
+                    {bkashCount} টি
+                  </span>
+                </div>
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Nagad (নগদ)</span>
+                  <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded border border-slate-200">
+                    {nagadCount} টি
+                  </span>
+                </div>
+                <div className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
+                  <span className="font-bold text-slate-800">Rocket (রকেট)</span>
+                  <span className="font-mono font-bold text-slate-900 bg-white px-2.5 py-0.5 rounded border border-slate-200">
+                    {rocketCount} টি
+                  </span>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-bold">সর্বমোট পেমেন্ট ভলিউম:</span>
+                  <span className="font-mono font-black text-slate-900 text-sm">৳{totalRevenueBDT} BDT</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500 font-bold">গড় বিষয় সংখ্যা प्रति আবেদন:</span>
+                  <span className="font-mono font-bold text-slate-800">
+                    {totalOrdersCount > 0 ? (orders.reduce((sum, o) => sum + (o.subjects?.length || 0), 0) / totalOrdersCount).toFixed(1) : 0} টি
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      ) : activeTab === 'orders' ? (
+        /* ------------------------------------------------------------- */
+        /* 3. ORDERS LIST TABLE VIEW */
+        /* ------------------------------------------------------------- */
+        <>
+          {/* Filters & Export Bar (Clean & Focused) */}
+          <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
@@ -1077,7 +1184,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 placeholder="Order ID / Roll / Phone / Name / TrxID দিয়ে খুঁজুন..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-2xl pl-10 pr-3 py-2 text-xs font-mono focus:ring-2 focus:ring-blue-500 shadow-xs"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2 text-xs font-mono focus:bg-white focus:ring-2 focus:ring-slate-400 shadow-xs"
               />
             </div>
 
@@ -1085,18 +1192,18 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer w-full sm:w-auto"
+                className="bg-white border border-slate-200 text-xs rounded-xl p-2 font-bold shadow-xs cursor-pointer w-full sm:w-auto text-slate-800"
               >
                 <option value="ALL">সকল স্ট্যাটাস</option>
-                <option value="Pending">Pending</option>
-                <option value="Processing">Processing</option>
-                <option value="Completed">Completed</option>
+                <option value="Pending">Pending ({pendingCount})</option>
+                <option value="Processing">Processing ({processingCount})</option>
+                <option value="Completed">Completed ({completedCount})</option>
               </select>
 
               <select
                 value={boardFilter}
                 onChange={e => setBoardFilter(e.target.value)}
-                className="bg-white border border-slate-300 text-xs rounded-2xl p-2.5 font-bold shadow-xs cursor-pointer w-full sm:w-auto"
+                className="bg-white border border-slate-200 text-xs rounded-xl p-2 font-bold shadow-xs cursor-pointer w-full sm:w-auto text-slate-800"
               >
                 <option value="ALL">সকল বোর্ড</option>
                 {BOARDS_LIST.map(b => (
@@ -1107,7 +1214,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               <button
                 type="button"
                 onClick={handleExportCSV}
-                className="col-span-2 sm:col-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+                className="col-span-2 sm:col-auto bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer shrink-0"
               >
                 <Download className="w-4 h-4" />
                 <span>CSV রিপোর্ট</span>
@@ -1654,11 +1761,116 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
           {/* SUBTAB 2: PAYMENTS & FEES */}
           {settingsSubTab === 'payments' && (
-            <div className="space-y-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
-              <h3 className="font-extrabold text-slate-900 text-base border-b border-slate-100 pb-2">
-                পেমেন্ট নম্বর ও ফি সেটিংস
-              </h3>
+            <div className="space-y-6 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-xs sm:text-sm animate-in fade-in">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h3 className="font-extrabold text-slate-900 text-base">
+                  পেমেন্ট নম্বর, বাংলা QR ও ফি সেটিংস
+                </h3>
+                <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                  Bangla QR Default Active
+                </span>
+              </div>
 
+              {/* BANGLA QR CUSTOMIZATION & UPLOAD SECTION */}
+              <div className="bg-slate-50 p-4 sm:p-5 rounded-2xl border border-slate-200 space-y-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div>
+                    <h4 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                      <QrCode className="w-4 h-4 text-slate-700" />
+                      <span>বাংলা QR (Payment Scan QR) ইমেজ ম্যানেজমেন্ট</span>
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      গ্রাহকদের পেমেন্ট করার জন্য মার্চেন্ট/পার্সোনাল কিউআর কোডের ছবি আপলোড বা পরিবর্তন করুন। (পেমেন্ট গেটওয়ের বাংলা QR ব্র্যান্ড লোগো অপরিবর্তনীয়)।
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAppSettings({ 
+                      ...appSettings, 
+                      banglaQrImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg' 
+                    })}
+                    className="text-[11px] text-slate-600 hover:text-slate-900 bg-white border border-slate-300 font-bold px-2.5 py-1 rounded-lg cursor-pointer transition shadow-2xs shrink-0"
+                  >
+                    ডিফল্ট QR কোডে রিসেট করুন
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                  {/* Preview Box */}
+                  <div className="flex flex-col items-center justify-center p-3 bg-white rounded-xl border border-slate-300 shadow-2xs space-y-2">
+                    <span className="text-[11px] font-bold text-slate-600">স্ক্যান পেমেন্ট QR প্রিভিউ</span>
+                    <div className="w-36 h-36 p-0 bg-white rounded-lg border-2 border-slate-900 overflow-hidden flex items-center justify-center shadow-xs">
+                      <img 
+                        src={appSettings.banglaQrImageUrl || 'https://upload.wikimedia.org/wikipedia/commons/c/c8/%E0%A6%AC%E0%A6%BE%E0%A6%82%E0%A6%B2%E0%A6%BE_%E0%A6%95%E0%A6%BF%E0%A6%89%E0%A6%86%E0%A6%B0.svg'} 
+                        alt="Bangla QR Code Preview" 
+                        className="w-full h-full object-contain bg-white"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-1 text-[10px] text-slate-500">
+                      <span>মেথড লোগো:</span>
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/4/4c/Bangla_QR_Logo.svg" alt="Logo" className="h-4 w-auto" />
+                    </div>
+                  </div>
+
+                  {/* Upload File & Input Controls */}
+                  <div className="md:col-span-2 space-y-3">
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1">
+                        ১. কিউআর কোড ছবি আপলোড করুন (Upload Image File)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert('ছবিটির সাইজ সর্বোচ্চ 2MB এর মধ্যে হওয়া বাঞ্ছনীয়।');
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              if (reader.result) {
+                                setAppSettings({ ...appSettings, banglaQrImageUrl: reader.result as string });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        className="w-full text-xs text-slate-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-slate-800 cursor-pointer bg-white p-2 border border-slate-300 rounded-xl"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1">
+                        ২. অথবা ইমেজ URL লিংক পেস্ট করুন (Direct Image Link)
+                      </label>
+                      <input
+                        type="text"
+                        value={appSettings.banglaQrImageUrl || ''}
+                        onChange={e => setAppSettings({ ...appSettings, banglaQrImageUrl: e.target.value })}
+                        placeholder="https://example.com/my-bangla-qr.png"
+                        className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono text-xs font-bold text-slate-900 focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-800 mb-1">
+                        ৩. একাউন্ট ও ব্যাংক ডিটেইলস টেক্সট (Account Name & Bank Details)
+                      </label>
+                      <input
+                        type="text"
+                        value={appSettings.banglaQrAccountInfo || 'Account Name: MD. MOSTAKIM HOSSAIN, BRANCH: MOHAMMADPUR Dutch Bangla Bank, (TID - 30167769)'}
+                        onChange={e => setAppSettings({ ...appSettings, banglaQrAccountInfo: e.target.value })}
+                        placeholder="Account Name: MD. MOSTAKIM HOSSAIN..."
+                        className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-slate-400"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Standard Payment Numbers */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block font-bold text-slate-800 mb-1">bKash Personal Number</label>
@@ -2421,6 +2633,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
                     className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-xs"
                   >
+                    <option value="Bangla QR">Bangla QR</option>
                     <option value="bKash">bKash</option>
                     <option value="Nagad">Nagad</option>
                     <option value="Rocket">Rocket</option>
