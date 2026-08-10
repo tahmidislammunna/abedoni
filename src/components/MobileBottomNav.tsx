@@ -34,7 +34,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           }`}
         >
           <FileText className="w-5 h-5 mb-0.5" />
-          <span className="text-[10px]">আবেদন</span>
+          <span className="text-[10px]">গাইড ও সহায়তা</span>
         </button>
 
         <button

@@ -69,6 +69,31 @@ export function generateSecondSmsCommand(pin: string, contactPhone: string): str
 }
 
 /**
+ * Generate Assistance Request WhatsApp Message for 1-tap WhatsApp consultation CTA
+ */
+export function generateAssistanceRequestWhatsappMessage(
+  phone: string,
+  boardName: string,
+  subjectNames: string[]
+): string {
+  const subjectsFormatted = subjectNames.length > 0
+    ? subjectNames.map(s => `- ${s}`).join('\n')
+    : '- কোনো বিষয় সিলেক্ট করা হয়নি (পরামর্শ প্রয়োজন)';
+
+  const text = `আসসালামু আলাইকুম,
+আমি SSC 2026 ফলাফল পুনঃনিরীক্ষণ / Board Challenge সম্পর্কে সহায়তা নিতে চাই।
+
+নাম্বার: ${phone.trim() || 'প্রদান করা হয়নি'}
+বোর্ড: ${boardName || 'প্রদান করা হয়নি'}
+নির্বাচিত বিষয়:
+${subjectsFormatted}
+
+আমি Abedoni-এর অভিজ্ঞ Support Team-এর সহায়তা নিতে চাই।`;
+
+  return encodeURIComponent(text);
+}
+
+/**
  * Generate 1-click WhatsApp direct URL
  */
 export function getWhatsappDirectUrl(phone: string = '01577777092', textOrEncodedMessage: string = ''): string {
@@ -136,18 +161,18 @@ export function generateStudentWhatsappMessage(
 
   const templateToUse = customTemplate || `আসসালামু আলাইকুম!
 
-আমি আবেদনের ডিজিটাল ট্র্যাকিং বোর্ডে অর্ডার সম্পন্ন করেছি।
+আমি Abedoni অনলাইন সহায়তা পোর্টালে তথ্য প্রদান করেছি।
 
-📌 **অর্ডার বিবরণী:**
+📌 **শিক্ষার্থী ও আবেদনের বিবরণী:**
 • **অর্ডার আইডি:** {orderId}
 • **শিক্ষার্থীর নাম:** {studentName}
 • **রোল নম্বর:** {rollNumber}
+• **রেজি নম্বর:** {regNumber}
 • **শিক্ষা বোর্ড:** {boardName}
-• **মোট পরিশোধিত ফি:** ৳{totalFee}
-• **পেমেন্ট মাধ্যম:** {paymentMethod}
-• **ট্রানজেকশন ID:** {trxId}
+• **নির্বাচিত বিষয়:** {subjects}
+• **পরিশোধিত সার্ভিস ফি:** ৳{totalFee} ({paymentMethod}, TrxID: {trxId})
 
-অনুগ্রহ করে আমার আবেদনটি বোর্ড চ্যালেঞ্জ সিস্টেমের টেলিটক পোর্টালে সাবমিট করে দিন। ধন্যবাদ!`;
+অনুগ্রহ করে আমার ফলাফল পুনঃনিরীক্ষণ (Board Challenge) আবেদনটি অনলাইন পোর্টালে সম্পন্ন করতে সহায়তা করুন। ধন্যবাদ!`;
 
   return encodeURIComponent(replaceTemplateVars(templateToUse, vars));
 }

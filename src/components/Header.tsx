@@ -101,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <FileText className="w-3.5 h-3.5 xl:w-4 xl:h-4" />
-                <span>আবেদন</span>
+                <span>গাইড ও সহায়তা</span>
               </button>
 
               <button
