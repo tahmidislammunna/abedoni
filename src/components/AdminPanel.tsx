@@ -2916,8 +2916,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
       {/* Digital Invoice / Receipt Preview Popup Modal */}
       {previewInvoiceOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn print:static print:bg-transparent print:p-0 print:m-0 print:overflow-visible">
-          <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[92vh] overflow-hidden print:shadow-none print:m-0 print:border-none print:p-0 print:max-w-none print:w-full print:max-h-none print:overflow-visible">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn print:static print:block print:inset-auto print:bg-transparent print:p-0 print:m-0 print:overflow-visible print:w-full print:h-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[92vh] overflow-hidden print:shadow-none print:m-0 print:border-none print:p-0 print:max-w-none print:w-full print:max-h-none print:overflow-visible print:block">
             
             {/* Header / Mode Switcher */}
             <div className="flex items-center justify-between border-b border-slate-200 p-4 sm:px-6 bg-slate-50/90 shrink-0 print:hidden">
@@ -2931,7 +2931,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
-                  🧾 ইনভয়েস মেমো
+                  🧾 ইনভয়েস
                 </button>
                 <button
                   type="button"

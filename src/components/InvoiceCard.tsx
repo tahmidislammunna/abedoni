@@ -252,7 +252,7 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ order, type = 'invoice
           </tbody>
         </table>
 
-        {/* Subtotal & Solid Black Total Box */}
+        {/* Subtotal & Total Box (Clean, High-Contrast Light Box without dark background) */}
         <div className="pt-4 space-y-2 text-xs sm:text-sm">
           <div className="flex justify-end gap-12 text-slate-700">
             <span className="font-bold">Board Subtotal</span>
@@ -269,9 +269,9 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ order, type = 'invoice
             </div>
           )}
 
-          <div className="bg-slate-900 text-white p-3.5 sm:p-4 font-black text-base sm:text-lg flex items-center justify-between w-full max-w-xs ml-auto shadow-md">
+          <div className="bg-slate-50 border-2 border-slate-900 text-slate-900 p-3 sm:p-3.5 rounded-xl font-black text-base sm:text-lg flex items-center justify-between w-full max-w-xs ml-auto shadow-2xs">
             <span>Total</span>
-            <span className="font-mono text-emerald-400">৳{grandTotal} BDT</span>
+            <span className="font-mono text-emerald-700">৳{grandTotal} BDT</span>
           </div>
         </div>
       </div>

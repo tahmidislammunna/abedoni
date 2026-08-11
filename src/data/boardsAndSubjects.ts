@@ -204,7 +204,7 @@ export function generateWhatsappInvoiceMessage(order: any): string {
   const platformFee = order.platformFee || 49;
   const totalFee = order.totalFee || (officialFee + platformFee);
 
-  const text = `🧾 **আবেদনী (Abedoni) - ইনভয়েস ও মেমো**
+  const text = `🧾 **আবেদনী (Abedoni) - ডিজিটাল ইনভয়েস**
 
 • **অর্ডার / লিড আইডি:** ${order.id}
 • **শিক্ষার্থীর নাম:** ${order.studentName || 'N/A'}
