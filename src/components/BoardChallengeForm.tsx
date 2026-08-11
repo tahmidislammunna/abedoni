@@ -44,6 +44,12 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   const [selectedSubjectCodes, setSelectedSubjectCodes] = useState<string[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
+  // Submission Completion State
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedLeadId, setSubmittedLeadId] = useState('');
+  const [submittedWhatsappUrl, setSubmittedWhatsappUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Fee Calculations
   const boardFeePerSub = settings.officialBoardFee || 150;
   const platformFee = settings.abedoniServiceFee || 49;
@@ -80,6 +86,8 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
       return;
     }
 
+    setIsSubmitting(true);
+
     const boardObj = BOARDS_LIST.find(b => b.code === board);
     const boardName = boardObj ? boardObj.nameBn : board;
     const subjectNames = getSelectedSubjectNames(selectedSubjectCodes);
@@ -98,7 +106,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
           board,
           subjects: selectedSubjectCodes,
           isLead: true,
-          orderStatus: 'Pending Lead',
+          orderStatus: 'Pending',
         }),
       });
       if (res.ok) {
@@ -107,6 +115,8 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
       }
     } catch (err) {
       console.error('Failed to create lead record:', err);
+    } finally {
+      setIsSubmitting(false);
     }
 
     const encodedMsg = generateAssistanceRequestWhatsappMessage(
@@ -125,7 +135,9 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
 
     const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', finalEncodedMsg);
     
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    setSubmittedLeadId(leadId);
+    setSubmittedWhatsappUrl(targetUrl);
+    setIsSubmitted(true);
   };
 
   return (
@@ -401,132 +413,182 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
       {/* OPTION 2: "অভিজ্ঞদের সহায়তা নিন" (CLEAN & DIRECT WHATSAPP TRIGGER FLOW)    */}
       {/* ========================================================================= */}
       {activeMode === 'assisted' && (
-        <form 
-          onSubmit={handleAssistedWhatsAppTrigger} 
-          className="bg-white/80 backdrop-blur-2xl p-6 sm:p-10 rounded-[32px] border border-slate-200 shadow-xl space-y-6 animate-in fade-in duration-200"
-        >
-          <div className="border-b border-slate-200/80 pb-4 flex items-center justify-between">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-                <Headphones className="w-6 h-6 text-blue-600" />
-                <span>২. অভিজ্ঞদের সহায়তা নিন (৳{platformFee})</span>
+        isSubmitted ? (
+          <div className="bg-emerald-50/90 border-2 border-emerald-400 rounded-[32px] p-8 sm:p-12 text-center space-y-6 animate-in zoom-in-95 shadow-xl">
+            <div className="w-20 h-20 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-600/30">
+              <Check className="w-12 h-12 stroke-[3]" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-2xl sm:text-4xl font-black text-emerald-950">
+                আবেদন সম্পন্ন হয়েছে।
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                আপনার নম্বর ও পছন্দের বিষয় সিলেক্ট করে সরাসরি হোয়াটসঅ্যাপে আমাদের সাথে যোগাযোগ করুন।
+              <p className="text-base sm:text-lg text-emerald-900 font-bold max-w-md mx-auto">
+                আমাদের প্রতিনিধি যোগাযোগ করবে।
               </p>
-            </div>
-            <span className="bg-blue-100 text-blue-800 text-xs font-black px-3 py-1 rounded-full border border-blue-200 shrink-0">
-              Abedoni Assistance
-            </span>
-          </div>
-
-          {errorMessage && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm p-4 rounded-2xl flex items-center gap-2 shadow-xs">
-              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Form Fields: Exactly as specified by User */}
-          <div className="space-y-5 text-xs sm:text-sm">
-            
-            {/* Field 1: WhatsApp / Mobile Number */}
-            <div>
-              <label className="block font-bold text-slate-800 mb-1.5 text-sm">
-                ১. হোয়াটসঅ্যাপ / মোবাইল নম্বর *
-              </label>
-              <input
-                type="tel"
-                required
-                maxLength={11}
-                placeholder="যেমন: 01712345678"
-                value={phone}
-                onChange={e => {
-                  setPhone(e.target.value.replace(/[^0-9]/g, ''));
-                  if (errorMessage) setErrorMessage('');
-                }}
-                className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-4 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:bg-white text-base shadow-xs"
-              />
-              <p className="text-[11px] text-slate-500 mt-1">
-                * এই নম্বরে আবেদনী টিম সরাসরি আপনাকে হোয়াটসঅ্যাপ মেসেজে আবেদন প্রক্রিয়ায় সাহায্য করবে।
-              </p>
+              {submittedLeadId && (
+                <div className="inline-block bg-white text-emerald-950 font-mono text-xs sm:text-sm font-black px-4 py-1.5 rounded-full border border-emerald-300 mt-2 shadow-2xs">
+                  অর্ডার / লিড আইডি: #{submittedLeadId}
+                </div>
+              )}
             </div>
 
-            {/* Field 2: Education Board Selection */}
-            <div>
-              <label className="block font-bold text-slate-800 mb-1.5 text-sm">
-                শিক্ষা বোর্ড
-              </label>
-              <select
-                value={board}
-                onChange={e => setBoard(e.target.value as EducationBoard)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3.5 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-xs cursor-pointer"
+            {/* Requested Button */}
+            <div className="pt-2">
+              <a
+                href={submittedWhatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-8 py-4 sm:py-5 rounded-2xl text-base sm:text-lg shadow-xl shadow-emerald-600/30 transition-all hover:scale-[1.02] cursor-pointer w-full sm:w-auto"
               >
-                {BOARDS_LIST.map(b => (
-                  <option key={b.code} value={b.code}>{b.nameBn}</option>
-                ))}
-              </select>
+                <MessageSquare className="w-6 h-6 fill-white/20" />
+                <span>অভিজ্ঞদের সাথে কথা বলুন</span>
+              </a>
             </div>
 
-            {/* Field 3: Subjects to Challenge */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block font-bold text-slate-800 text-sm">
-                  ২. যেসব বিষয়ে চ্যালেঞ্জ করতে চান
+            <div className="pt-4 border-t border-emerald-200/80">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSubmitted(false);
+                  setPhone('');
+                  setSelectedSubjectCodes([]);
+                }}
+                className="text-xs sm:text-sm text-slate-600 hover:text-slate-900 font-bold underline cursor-pointer"
+              >
+                নতুন তথ্য সাবমিট করুন
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form 
+            onSubmit={handleAssistedWhatsAppTrigger} 
+            className="bg-white/80 backdrop-blur-2xl p-6 sm:p-10 rounded-[32px] border border-slate-200 shadow-xl space-y-6 animate-in fade-in duration-200"
+          >
+            <div className="border-b border-slate-200/80 pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
+                  <Headphones className="w-6 h-6 text-blue-600" />
+                  <span>২. অভিজ্ঞদের সহায়তা নিন (৳{platformFee})</span>
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 mt-1">
+                  আপনার নম্বর ও পছন্দের বিষয় সিলেক্ট করে তথ্য সাবমিট করুন।
+                </p>
+              </div>
+              <span className="bg-blue-100 text-blue-800 text-xs font-black px-3 py-1 rounded-full border border-blue-200 shrink-0">
+                Abedoni Assistance
+              </span>
+            </div>
+
+            {errorMessage && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm p-4 rounded-2xl flex items-center gap-2 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Form Fields */}
+            <div className="space-y-5 text-xs sm:text-sm">
+              
+              {/* Field 1: WhatsApp / Mobile Number */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5 text-sm">
+                  ১. হোয়াটসঅ্যাপ / মোবাইল নম্বর *
                 </label>
-                <span className="text-xs text-blue-700 font-extrabold bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
-                  {selectedSubjectCodes.length}টি বিষয় নির্বাচন করেছেন
-                </span>
+                <input
+                  type="tel"
+                  required
+                  maxLength={11}
+                  placeholder="যেমন: 01712345678"
+                  value={phone}
+                  onChange={e => {
+                    setPhone(e.target.value.replace(/[^0-9]/g, ''));
+                    if (errorMessage) setErrorMessage('');
+                  }}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-4 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:bg-white text-base shadow-xs"
+                />
+                <p className="text-[11px] text-slate-500 mt-1">
+                  * এই নম্বরে আবেদনী টিম সরাসরি আপনাকে হোয়াটসঅ্যাপ মেসেজে আবেদন প্রক্রিয়ায় সাহায্য করবে।
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto p-3 bg-slate-50 rounded-2xl border border-slate-200">
-                {SSC_SUBJECTS.map(subj => {
-                  const isChecked = selectedSubjectCodes.includes(subj.code);
-                  return (
-                    <button
-                      key={subj.code}
-                      type="button"
-                      onClick={() => handleToggleSubjectAssisted(subj.code)}
-                      className={`p-3 rounded-xl text-xs font-bold border transition text-left flex items-center justify-between cursor-pointer ${
-                        isChecked
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
-                          : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <span className="truncate pr-1">{subj.nameBn} ({subj.code})</span>
-                      {isChecked && <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />}
-                    </button>
-                  );
-                })}
+              {/* Field 2: Education Board Selection */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1.5 text-sm">
+                  শিক্ষা বোর্ড
+                </label>
+                <select
+                  value={board}
+                  onChange={e => setBoard(e.target.value as EducationBoard)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-2xl p-3.5 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-xs cursor-pointer"
+                >
+                  {BOARDS_LIST.map(b => (
+                    <option key={b.code} value={b.code}>{b.nameBn}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Field 3: Subjects to Challenge */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block font-bold text-slate-800 text-sm">
+                    ২. যেসব বিষয়ে চ্যালেঞ্জ করতে চান
+                  </label>
+                  <span className="text-xs text-blue-700 font-extrabold bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-200">
+                    {selectedSubjectCodes.length}টি বিষয় নির্বাচন করেছেন
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  {SSC_SUBJECTS.map(subj => {
+                    const isChecked = selectedSubjectCodes.includes(subj.code);
+                    return (
+                      <button
+                        key={subj.code}
+                        type="button"
+                        onClick={() => handleToggleSubjectAssisted(subj.code)}
+                        className={`p-3 rounded-xl text-xs font-bold border transition text-left flex items-center justify-between cursor-pointer ${
+                          isChecked
+                            ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                            : 'bg-white text-slate-800 border-slate-200 hover:bg-slate-100'
+                        }`}
+                      >
+                        <span className="truncate pr-1">{subj.nameBn} ({subj.code})</span>
+                        {isChecked && <Check className="w-4 h-4 text-white shrink-0 stroke-[3]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Clear Separation of Fees Notice */}
+              <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-300">
+                  <span>আবেদনী অনলাইন সাপোর্ট চার্জ:</span>
+                  <span className="font-mono font-bold text-emerald-400 text-sm">৳{platformFee} BDT</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-400 border-t border-slate-800 pt-2">
+                  <span>অফিশিয়াল বোর্ড ফি (বোর্ডের পাওনা):</span>
+                  <span className="font-mono font-bold text-slate-200">৳{boardFeePerSub} / বিষয় (আলাদা পরিশোধযোগ্য)</span>
+                </div>
+              </div>
+
             </div>
 
-            {/* Clear Separation of Fees Notice */}
-            <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-2 text-xs">
-              <div className="flex justify-between items-center text-slate-300">
-                <span>আবেদনী অনলাইন সাপোর্ট চার্জ:</span>
-                <span className="font-mono font-bold text-emerald-400 text-sm">৳{platformFee} BDT</span>
-              </div>
-              <div className="flex justify-between items-center text-slate-400 border-t border-slate-800 pt-2">
-                <span>অফিশিয়াল বোর্ড ফি (বোর্ডের পাওনা):</span>
-                <span className="font-mono font-bold text-slate-200">৳{boardFeePerSub} / বিষয় (আলাদা পরিশোধযোগ্য)</span>
-              </div>
+            {/* Trigger Submit Button */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 px-6 rounded-2xl text-base transition flex items-center justify-center gap-3 cursor-pointer shadow-xl shadow-emerald-600/25 disabled:opacity-50"
+              >
+                <Send className="w-5 h-5" />
+                <span>{isSubmitting ? 'সাবমিট হচ্ছে...' : 'আবেদন সাবমিট করুন'}</span>
+              </button>
             </div>
 
-          </div>
-
-          {/* Trigger Button: Exactly as specified by User */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-4 px-6 rounded-2xl text-base transition flex items-center justify-center gap-3 cursor-pointer shadow-xl shadow-emerald-600/25"
-            >
-              <MessageSquare className="w-5 h-5 fill-white/20" />
-              <span>অভিজ্ঞদের সাথে কথা বলুন (WhatsApp)</span>
-            </button>
-          </div>
-
-        </form>
+          </form>
+        )
       )}
 
     </div>

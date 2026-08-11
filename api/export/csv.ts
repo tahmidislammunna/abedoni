@@ -20,12 +20,14 @@ export type EducationBoard =
 export type ExamType = 'SSC' | 'DAKHIL' | 'VOCATIONAL';
 
 export type OrderStatus = 
+  | 'Pending Lead'
   | 'Pending' 
+  | 'Contacted'
+  | 'Payment Pending'
   | 'Payment Verified' 
+  | 'Finalized'
   | 'Processing' 
-  | 'SMS Sent' 
   | 'Completed' 
-  | 'Updated' 
   | 'Cancelled';
 
 export type PaymentMethod = 'Bangla QR' | 'bKash' | 'Nagad' | 'Rocket' | 'Upay';

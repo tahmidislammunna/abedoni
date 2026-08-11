@@ -20,12 +20,14 @@ export type EducationBoard =
 export type ExamType = 'SSC' | 'DAKHIL' | 'VOCATIONAL';
 
 export type OrderStatus = 
+  | 'Pending Lead'
   | 'Pending' 
+  | 'Contacted'
+  | 'Payment Pending'
   | 'Payment Verified' 
+  | 'Finalized'
   | 'Processing' 
-  | 'SMS Sent' 
   | 'Completed' 
-  | 'Updated' 
   | 'Cancelled';
 
 export type PaymentMethod = 'Bangla QR' | 'bKash' | 'Nagad' | 'Rocket' | 'Upay';
@@ -89,7 +91,7 @@ function dbRowToOrder(row: any): BoardChallengeOrder {
     receiptId: row.receipt_id || `RCP-${row.id.replace(/\D/g, '')}`,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    isFinalized: Boolean(row.is_finalized || row.order_status === 'Finalized' || row.order_status === 'Completed'),
+    isFinalized: Boolean(row.is_finalized || row.order_status === 'Finalized' || row.order_status === 'Completed' || row.order_status === 'Processing' || row.order_status === 'Payment Verified' || (row.roll && row.reg && row.student_name && row.student_name !== 'পেন্ডিং লিড')),
     studentName: row.student_name || 'পেন্ডিং লিড',
     fatherName: row.father_name || '',
     motherName: row.mother_name || '',
@@ -110,7 +112,7 @@ function dbRowToOrder(row: any): BoardChallengeOrder {
     paymentSenderPhone: row.payment_sender_phone || row.phone || '',
     trxId: row.trx_id || 'PENDING_TRX',
     paymentStatus: row.payment_status || 'Pending',
-    orderStatus: row.order_status || 'Pending Lead',
+    orderStatus: row.order_status || 'Pending',
     adminNotes: row.admin_notes || '',
     teletalkSmsCommand1: row.teletalk_sms_command1 || '',
     boardReply1: row.board_reply1 || '',
@@ -126,7 +128,6 @@ function orderToDbRow(order: Partial<BoardChallengeOrder>): Record<string, any> 
   if (order.receiptId !== undefined) row.receipt_id = order.receiptId;
   if (order.createdAt !== undefined) row.created_at = order.createdAt;
   if (order.updatedAt !== undefined) row.updated_at = order.updatedAt;
-  if (order.isFinalized !== undefined) row.is_finalized = order.isFinalized;
   if (order.studentName !== undefined) row.student_name = order.studentName;
   if (order.fatherName !== undefined) row.father_name = order.fatherName;
   if (order.motherName !== undefined) row.mother_name = order.motherName;

@@ -217,7 +217,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#F0F4FF] text-slate-900 flex flex-col font-bn selection:bg-blue-200 selection:text-blue-900 overflow-x-hidden pb-16 md:pb-0">
+    <div className={`relative min-h-screen bg-[#F0F4FF] text-slate-900 flex flex-col font-bn selection:bg-blue-200 selection:text-blue-900 overflow-x-hidden ${isAdmin ? 'pb-0' : 'pb-16 md:pb-0'}`}>
       
       {/* SEO Head Manager */}
       <SeoHead activeTab={activeTab} isMaintenanceActive={isMaintenanceActive} settings={settings} />
@@ -227,17 +227,19 @@ export default function App() {
       <div className="fixed bottom-[-50px] left-[-50px] w-[400px] h-[400px] bg-emerald-400/20 rounded-full blur-[120px] pointer-events-none z-0" />
       <div className="fixed top-[45%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-300/15 rounded-full blur-[160px] pointer-events-none z-0" />
 
-      {/* Header */}
-      <Header
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isAdmin={isAdmin}
-        setIsAdmin={setIsAdmin}
-        settings={settings}
-      />
+      {/* Header - Hidden in Admin Mode */}
+      {!isAdmin && (
+        <Header
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isAdmin={isAdmin}
+          setIsAdmin={setIsAdmin}
+          settings={settings}
+        />
+      )}
 
       {/* Main View Container */}
-      <main className="relative z-10 flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <main className={`relative z-10 flex-1 w-full mx-auto ${isAdmin ? 'max-w-none px-2 sm:px-4 lg:px-6 pt-3 pb-6' : 'max-w-7xl px-4 sm:px-6 lg:px-8 pt-6'}`}>
         {isAdmin ? (
           isAdminAuthenticated ? (
             <AdminPanel 
@@ -304,10 +306,10 @@ export default function App() {
       </main>
 
       {/* Floating Traditional WhatsApp Support Action Button */}
-      {!(isAdmin && !isAdminAuthenticated) && <WhatsAppFloatingButton />}
+      {!isAdmin && <WhatsAppFloatingButton />}
 
-      {/* Mobile Bottom Bar for App-like Experience (hidden during Maintenance Mode) */}
-      {!isMaintenanceActive && !(isAdmin && !isAdminAuthenticated) && (
+      {/* Mobile Bottom Bar for App-like Experience (hidden during Maintenance Mode and Admin) */}
+      {!isMaintenanceActive && !isAdmin && (
         <MobileBottomNav
           activeTab={activeTab}
           setActiveTab={setActiveTab}
@@ -316,8 +318,8 @@ export default function App() {
         />
       )}
 
-      {/* Footer (hidden during Maintenance Mode, as MaintenanceView renders its own dedicated footer) */}
-      {!isMaintenanceActive && !(isAdmin && !isAdminAuthenticated) && (
+      {/* Footer (hidden during Maintenance Mode & Admin Mode) */}
+      {!isMaintenanceActive && !isAdmin && (
         <footer className="relative z-10 bg-slate-900/95 backdrop-blur-2xl text-slate-300 border-t border-slate-800/60 pt-12 pb-8 mt-16 font-bn">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
           

@@ -29,9 +29,7 @@ export type OrderStatus =
   | 'Payment Verified'
   | 'Finalized'
   | 'Processing'
-  | 'SMS Sent' 
   | 'Completed' 
-  | 'Updated' 
   | 'Cancelled';
 
 export type PaymentMethod = 'Bangla QR' | 'bKash' | 'Nagad' | 'Rocket' | 'Upay';

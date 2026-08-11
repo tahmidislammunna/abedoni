@@ -85,6 +85,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [validationError, setValidationError] = useState('');
 
+  // Lead Submission Completion State
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submittedLeadId, setSubmittedLeadId] = useState('');
+  const [submittedWhatsappUrl, setSubmittedWhatsappUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     fetch('/api/reviews')
       .then(res => res.json())
@@ -114,13 +120,15 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   };
 
-  const handleConsultationClick = async (e: React.MouseEvent) => {
+  const handleConsultationClick = async (e?: React.MouseEvent | React.FormEvent) => {
+    if (e) e.preventDefault();
     setValidationError('');
     if (!whatsappPhone.trim() || whatsappPhone.trim().length < 11) {
-      e.preventDefault();
       setValidationError('অনুগ্রহ করে সঠিক ১১ সংখ্যার হোয়াটসঅ্যাপ / মোবাইল নম্বর দিন।');
       return;
     }
+
+    setIsSubmitting(true);
 
     const boardObj = BOARDS_LIST.find(b => b.code === selectedBoard);
     const boardName = boardObj ? boardObj.nameBn : selectedBoard;
@@ -140,7 +148,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           board: selectedBoard,
           subjects: selectedSubjectCodes,
           isLead: true,
-          orderStatus: 'Pending Lead',
+          orderStatus: 'Pending',
         }),
       });
       if (res.ok) {
@@ -149,6 +157,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       }
     } catch (err) {
       console.error('Failed to create lead record:', err);
+    } finally {
+      setIsSubmitting(false);
     }
 
     const encodedMsg = generateAssistanceRequestWhatsappMessage(
@@ -168,7 +178,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
     const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', finalEncodedMsg);
     
-    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+    setSubmittedLeadId(leadId);
+    setSubmittedWhatsappUrl(targetUrl);
+    setIsSubmitted(true);
   };
 
   return (
@@ -272,6 +284,53 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
             )}
 
+            {isSubmitted ? (
+              <div className="bg-emerald-50/90 border-2 border-emerald-400 rounded-2xl sm:rounded-3xl p-6 sm:p-8 text-center space-y-5 animate-in zoom-in-95 shadow-lg">
+                <div className="w-16 h-16 bg-emerald-600 text-white rounded-full flex items-center justify-center mx-auto shadow-md shadow-emerald-600/30">
+                  <Check className="w-10 h-10 stroke-[3]" />
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="text-2xl sm:text-3xl font-black text-emerald-950">
+                    আবেদন সম্পন্ন হয়েছে।
+                  </h3>
+                  <p className="text-sm sm:text-base text-emerald-900 font-bold max-w-md mx-auto">
+                    আমাদের প্রতিনিধি যোগাযোগ করবে।
+                  </p>
+                  {submittedLeadId && (
+                    <span className="inline-block bg-white text-emerald-950 font-mono text-xs font-black px-3.5 py-1 rounded-full border border-emerald-300 mt-1 shadow-2xs">
+                      আইডি: #{submittedLeadId}
+                    </span>
+                  )}
+                </div>
+
+                <div className="pt-2">
+                  <a
+                    href={submittedWhatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black px-7 py-4 rounded-2xl text-sm sm:text-base shadow-xl shadow-emerald-600/30 transition-all hover:scale-[1.02] cursor-pointer w-full sm:w-auto"
+                  >
+                    <MessageSquare className="w-5 h-5 fill-white/20" />
+                    <span>অভিজ্ঞদের সাথে কথা বলুন</span>
+                  </a>
+                </div>
+
+                <div className="pt-3 border-t border-emerald-200/80">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSubmitted(false);
+                      setWhatsappPhone('');
+                      setSelectedSubjectCodes([]);
+                    }}
+                    className="text-xs text-slate-600 hover:text-slate-900 font-bold underline cursor-pointer"
+                  >
+                    নতুন তথ্য সাবমিট করুন
+                  </button>
+                </div>
+              </div>
+            ) : (
             <div className="space-y-3 text-xs sm:text-sm">
               
               {/* Step 1: WhatsApp / Mobile Number Input */}
@@ -288,6 +347,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     onChange={(e) => {
                       setWhatsappPhone(e.target.value.replace(/[^0-9]/g, ''));
                       if (validationError) setValidationError('');
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (whatsappPhone.trim().length >= 11) {
+                          handleConsultationClick(e as any);
+                        } else {
+                          setValidationError('অনুগ্রহ করে সঠিক ১১ সংখ্যার হোয়াটসঅ্যাপ / মোবাইল নম্বর দিন।');
+                        }
+                      }
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-mono font-bold text-sm sm:text-base focus:ring-2 focus:ring-emerald-500 focus:bg-white text-slate-900 shadow-2xs"
                   />
@@ -429,6 +498,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               )}
 
             </div>
+            )}
 
           </div>
 

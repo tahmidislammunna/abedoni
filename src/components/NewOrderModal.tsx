@@ -113,7 +113,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
         paymentSenderPhone: phone.trim(),
         trxId: trxId.trim() || 'MANUAL_CASH',
         orderStatus,
-        paymentStatus: ['Completed', 'Processing', 'Payment Verified', 'SMS Sent'].includes(orderStatus) ? 'Paid' : 'Reviewing',
+        paymentStatus: ['Completed', 'Processing', 'Payment Verified'].includes(orderStatus) ? 'Paid' : 'Reviewing',
         adminNotes: adminNotes.trim(),
         isFinalized: true,
       };
@@ -385,11 +385,12 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
                   className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 cursor-pointer"
                 >
                   <option value="Pending">1. Pending (যাচাইাধীন)</option>
-                  <option value="Payment Verified">2. Payment Verified (পেমেন্ট ভেরিফাইড)</option>
-                  <option value="Processing">3. Processing (প্রসেসিং)</option>
-                  <option value="SMS Sent">4. SMS Sent (এসএমএস প্রেরিত)</option>
-                  <option value="Completed">5. Completed (সম্পন্ন)</option>
-                  <option value="Cancelled">6. Cancelled (বাতিল)</option>
+                  <option value="Contacted">2. Contacted (যোগাযোগ করা হয়েছে)</option>
+                  <option value="Payment Pending">3. Payment Pending (পেমেন্ট প্রসেসিং)</option>
+                  <option value="Payment Verified">4. Payment Verified (পেমেন্ট ভেরিফাইড)</option>
+                  <option value="Processing">5. Processing (প্রসেসিং)</option>
+                  <option value="Completed">6. Completed (সম্পন্ন)</option>
+                  <option value="Cancelled">7. Cancelled (বাতিল)</option>
                 </select>
               </div>
 

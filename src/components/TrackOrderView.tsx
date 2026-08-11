@@ -65,13 +65,20 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
   // Timeline Step calculation
   const getTimelineStepIndex = (status: OrderStatus): number => {
     switch (status) {
-      case 'Pending': return 1;
-      case 'Payment Verified': return 2;
-      case 'Processing': return 3;
-      case 'SMS Sent': return 4;
-      case 'Completed': return 5;
-      case 'Updated': return 5;
-      default: return 2;
+      case 'Pending':
+      case 'Pending Lead':
+      case 'Contacted':
+      case 'Payment Pending': 
+        return 1;
+      case 'Payment Verified': 
+        return 2;
+      case 'Finalized':
+      case 'Processing': 
+        return 3;
+      case 'Completed': 
+        return 4;
+      default: 
+        return 2;
     }
   };
 
@@ -153,19 +160,23 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
                 <span className="text-xs sm:text-sm text-slate-500 font-mono font-extrabold">ORDER ID: {order.id}</span>
                 <h3 className="text-2xl font-black text-slate-900">{order.studentName}</h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className={`px-4 py-1.5 rounded-full text-xs sm:text-sm font-extrabold border shadow-xs ${
                   isProblematic
                     ? 'bg-rose-100 text-rose-900 border-rose-300'
-                    : order.paymentStatus === 'Paid'
+                    : order.orderStatus === 'Completed' || order.orderStatus === 'Processing' || order.orderStatus === 'Payment Verified'
                     ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                     : 'bg-amber-100 text-amber-900 border-amber-300'
                 }`}>
-                  পেমেন্ট স্ট্যাটাস: {
-                    order.orderStatus === 'Cancelled' ? 'বাতিলকৃত (Cancelled)' :
-                    order.paymentStatus === 'Paid' ? 'পরিশোধিত (Paid)' : 
-                    order.paymentStatus === 'Unverified' || order.paymentStatus === 'Failed' ? 'পেমেন্ট সমস্যা (Payment Issue)' :
-                    'যাচাইাধীন (Reviewing)'
+                  স্ট্যাটাস: {
+                    order.orderStatus === 'Cancelled' ? 'বাতিল (Cancelled)' :
+                    order.orderStatus === 'Completed' ? 'সম্পন্ন (Completed)' :
+                    order.orderStatus === 'Processing' ? 'প্রসেসিং (Processing)' :
+                    order.orderStatus === 'Finalized' ? 'আবেদনকৃত (Finalized)' :
+                    order.orderStatus === 'Payment Verified' ? 'পেমেন্ট কনফার্মড (Payment Verified)' :
+                    order.orderStatus === 'Payment Pending' ? 'পেমেন্ট প্রসেসিং (Payment Pending)' :
+                    order.orderStatus === 'Contacted' ? 'যোগাযোগ করা হয়েছে (Contacted)' :
+                    'যাচাইাধীন (Pending)'
                   }
                 </span>
               </div>
@@ -175,13 +186,12 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
             <div className="space-y-4">
               <h4 className="text-xs sm:text-sm font-extrabold text-slate-700 uppercase tracking-wider">আবেদন প্রক্রিয়াকরণ টাইমলাইন</h4>
               
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 text-xs sm:text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs sm:text-sm">
                 {[
                   { step: 1, title: 'আবেদন গৃহিত', desc: 'অর্ডার সাবমিটেড' },
-                  { step: 2, title: isProblematic ? 'পেমেন্ট ইস্যু' : order.paymentStatus === 'Paid' ? 'পেমেন্ট ভেরিফাইড' : 'যাচাইাধীন (Reviewing)', desc: 'পেমেন্ট চেক' },
-                  { step: 3, title: 'বোর্ড চ্যালেঞ্জ', desc: 'তথ্য প্রসেসিং' },
-                  { step: 4, title: 'SMS জমাকরণ', desc: 'টেলিটক এসএমএস' },
-                  { step: 5, title: 'সম্পন্ন', desc: 'আবেদন নিশ্চিত' },
+                  { step: 2, title: isProblematic ? 'পেমেন্ট ইস্যু' : order.paymentStatus === 'Paid' ? 'পেমেন্ট ভেরিফাইড' : 'যাচাইাধীন (Reviewing)', desc: 'পেমেন্ট কনফার্মেশন' },
+                  { step: 3, title: 'প্রসেসিং (Processing)', desc: 'আবেদনী টিম প্রসেসিং' },
+                  { step: 4, title: 'সম্পন্ন (Completed)', desc: 'আবেদন সফলভাবে নিশ্চিত' },
                 ].map(st => {
                   const currentIdx = getTimelineStepIndex(order.orderStatus);
                   const isDone = !isProblematic && st.step <= currentIdx;
@@ -212,28 +222,18 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
               </div>
             </div>
 
-            {/* Admin Notes / Latest Status Update Box (Highlighted RED if Cancelled or Payment Issue) */}
-            {(order.adminNotes || isProblematic) && (
-              <div className={`p-4 rounded-2xl text-xs sm:text-sm flex items-start gap-2.5 border shadow-xs ${
-                isProblematic
-                  ? 'bg-rose-50/95 border-rose-300 text-rose-900 ring-2 ring-rose-500/20'
-                  : 'bg-blue-50/90 border-blue-200 text-blue-900'
-              }`}>
-                {isProblematic ? (
-                  <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                ) : (
-                  <Clock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
-                )}
+            {/* Latest Status Update Box (Highlighted RED if Cancelled or Payment Issue) */}
+            {isProblematic && (
+              <div className="p-4 rounded-2xl text-xs sm:text-sm flex items-start gap-2.5 border shadow-xs bg-rose-50/95 border-rose-300 text-rose-900 ring-2 ring-rose-500/20">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className={`font-extrabold block text-xs ${isProblematic ? 'text-rose-950' : 'text-blue-950'}`}>
+                  <span className="font-extrabold block text-xs text-rose-950">
                     সর্বশেষ স্ট্যাটাস আপডেট:
                   </span>
                   <span className="font-bold text-sm leading-relaxed">
-                    {order.adminNotes || (
-                      order.orderStatus === 'Cancelled' 
-                        ? 'আপনার এই আবেদনটি বাতিল বা সমস্যাগ্রস্ত হিসেবে চিহ্নিত হয়েছে। সঠিক তথ্যের মাধ্যমে দ্রুত নতুন আবেদনের জন্য হোয়াটসঅ্যাপে সাপোর্ট প্যানেলে কথা বলুন।'
-                        : 'পেমেন্ট তথ্যে অসঙ্গতি পাওয়া গেছে। অনুগ্রহ করে পেমেন্টের সঠিক স্ক্রিনশট ও তথ্যাদি আমাদের হোয়াটসঅ্যাপে পাঠান।'
-                    )}
+                    {order.orderStatus === 'Cancelled' 
+                      ? 'আপনার এই আবেদনটি বাতিল বা সমস্যাগ্রস্ত হিসেবে চিহ্নিত হয়েছে। তথ্যের জন্য হোয়াটসঅ্যাপ সহায়তায় যোগাযোগ করুন।'
+                      : 'পেমেন্ট তথ্যে অসঙ্গতি পাওয়া গেছে। সাহায্য পেতে আমাদের হোয়াটসঅ্যাপে যোগাযোগ করুন।'}
                   </span>
                 </div>
               </div>
@@ -242,7 +242,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
 
           {/* Printable Digital Receipt Card Container */}
           <div className="space-y-4">
-            <InvoiceCard order={order} type="receipt" settings={settings} />
+            <InvoiceCard order={order} type="receipt" settings={settings} hideSensitiveData={true} />
 
             {/* Action Buttons below Receipt */}
             <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">

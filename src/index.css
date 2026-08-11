@@ -50,23 +50,28 @@
   animation: floatOrb 6s ease-in-out infinite;
 }
 
-/* Printable Digital Receipt Styles */
+/* Printable Digital Receipt Styles - Full A4 Page Optimization */
 @media print {
   @page {
     size: A4 portrait;
-    margin: 12mm;
+    margin: 8mm;
   }
 
-  body {
+  html, body {
     background: #ffffff !important;
     color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   /* Hide everything on screen by default */
   body * {
-    visibility: hidden;
+    visibility: hidden !important;
   }
 
   /* Make digital receipt and its descendants visible */
@@ -81,25 +86,27 @@
   nav, 
   button, 
   .no-print, 
-  .mobile-bottom-nav {
+  .mobile-bottom-nav,
+  .print\:hidden {
     display: none !important;
   }
 
-  /* Format, scale and center the digital receipt */
+  /* Format, scale and stretch the digital receipt for full A4 page */
   #digital-receipt-printable {
-    position: absolute !important;
-    left: 50% !important;
+    position: relative !important;
+    left: 0 !important;
     top: 0 !important;
-    transform: translateX(-50%) !important;
+    transform: none !important;
     width: 100% !important;
-    max-width: 750px !important;
+    max-width: 100% !important;
     margin: 0 auto !important;
-    padding: 28px !important;
-    border: 2px dashed #334155 !important;
+    padding: 20px !important;
+    border: 2px solid #0f172a !important;
     background: #ffffff !important;
     color: #0f172a !important;
     box-shadow: none !important;
-    border-radius: 16px !important;
+    border-radius: 12px !important;
+    box-sizing: border-box !important;
     page-break-inside: avoid !important;
   }
 

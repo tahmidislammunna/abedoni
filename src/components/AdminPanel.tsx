@@ -43,6 +43,7 @@ import { InvoiceCard } from './InvoiceCard';
 import { NewOrderModal } from './NewOrderModal';
 import { 
   BOARDS_LIST, 
+  SSC_SUBJECTS,
   replaceTemplateVars,
   generateWhatsappInvoiceMessage,
   generateWhatsappReceiptMessage,
@@ -67,7 +68,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   const [boardFilter, setBoardFilter] = useState<string>('ALL');
   
   // Lead / Order Filter Sub-Tab
-  const [leadFilterTab, setLeadFilterTab] = useState<'ALL' | 'LEADS' | 'FINALIZED'>('ALL');
+  const [leadFilterTab, setLeadFilterTab] = useState<'ALL' | 'LEADS' | 'FINALIZED' | 'COMPLETED'>('ALL');
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, label: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(label);
+    setTimeout(() => {
+      setCopiedField(null);
+    }, 2000);
+  };
 
   // New Order Modal State
   const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState<boolean>(false);
@@ -260,52 +271,64 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
   const handleFinalizeOrder = async (orderToFinalize: BoardChallengeOrder, customData?: typeof editForm) => {
     setIsSavingEdit(true);
-    const parsedSubjects = customData 
-      ? customData.subjects.split(',').map(s => s.trim()).filter(Boolean)
-      : orderToFinalize.subjects || [];
-
-    const payload = {
-      isFinalized: true,
-      orderStatus: 'Finalized' as OrderStatus,
-      paymentStatus: 'Paid',
-      studentName: customData?.studentName || orderToFinalize.studentName || 'শিক্ষার্থী',
-      roll: customData?.roll || orderToFinalize.roll || '',
-      reg: customData?.reg || orderToFinalize.reg || '',
-      board: customData?.board || orderToFinalize.board || 'DHA',
-      phone: customData?.phone || orderToFinalize.phone || '',
-      whatsapp: customData?.whatsapp || orderToFinalize.whatsapp || customData?.phone || orderToFinalize.phone || '',
-      fatherName: customData?.fatherName || orderToFinalize.fatherName || '',
-      motherName: customData?.motherName || orderToFinalize.motherName || '',
-      trxId: customData?.trxId || orderToFinalize.trxId || 'OFFICIAL-PAID',
-      paymentSenderPhone: customData?.paymentSenderPhone || orderToFinalize.paymentSenderPhone || customData?.phone || orderToFinalize.phone || '',
-      paymentMethod: customData?.paymentMethod || orderToFinalize.paymentMethod || 'bKash',
-      totalFee: customData?.totalFee || orderToFinalize.totalFee || (parsedSubjects.length * 150 + 49),
-      subjects: parsedSubjects,
-    };
-
     try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`/api/orders/${orderToFinalize.id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify(payload),
-      });
+      const parsedSubjects = customData 
+        ? customData.subjects.split(',').map(s => s.trim()).filter(Boolean)
+        : orderToFinalize.subjects || [];
 
-      if (res.ok) {
-        const data = await res.json();
-        const updated = data.order || { ...orderToFinalize, ...payload };
-        setOrders(prev => prev.map(o => o.id === orderToFinalize.id ? updated : o));
-        if (selectedOrder?.id === orderToFinalize.id) {
-          setSelectedOrder(updated);
+      const payload = {
+        isFinalized: true,
+        orderStatus: 'Finalized' as OrderStatus,
+        paymentStatus: 'Paid',
+        studentName: customData?.studentName || orderToFinalize.studentName || 'শিক্ষার্থী',
+        roll: customData?.roll || orderToFinalize.roll || '',
+        reg: customData?.reg || orderToFinalize.reg || '',
+        board: customData?.board || orderToFinalize.board || 'DHA',
+        phone: customData?.phone || orderToFinalize.phone || '',
+        whatsapp: customData?.whatsapp || orderToFinalize.whatsapp || customData?.phone || orderToFinalize.phone || '',
+        fatherName: customData?.fatherName || orderToFinalize.fatherName || '',
+        motherName: customData?.motherName || orderToFinalize.motherName || '',
+        trxId: customData?.trxId || orderToFinalize.trxId || 'OFFICIAL-PAID',
+        paymentSenderPhone: customData?.paymentSenderPhone || orderToFinalize.paymentSenderPhone || customData?.phone || orderToFinalize.phone || '',
+        paymentMethod: customData?.paymentMethod || orderToFinalize.paymentMethod || 'bKash',
+        totalFee: customData?.totalFee || orderToFinalize.totalFee || (parsedSubjects.length * 150 + 49),
+        subjects: parsedSubjects,
+      };
+
+      let updatedOrder: BoardChallengeOrder = {
+        ...orderToFinalize,
+        ...payload,
+        isFinalized: true,
+        orderStatus: 'Finalized' as OrderStatus,
+        paymentStatus: 'Paid'
+      };
+
+      try {
+        const headers = await getAuthHeaders();
+        const res = await fetch(`/api/orders/${orderToFinalize.id}`, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.order) {
+            updatedOrder = { ...updatedOrder, ...data.order, isFinalized: true, orderStatus: 'Finalized' as OrderStatus };
+          }
         }
-        setEditingOrder(null);
-        setPreviewInvoiceOrder(updated);
-        setPreviewModalType('invoice');
-      } else {
-        alert('ফাইনাল অর্ডার করতে সমস্যা হয়েছে!');
+      } catch (err) {
+        console.error('Finalize patch failed, updating local state', err);
       }
-    } catch (err) {
-      alert('নেটওয়ার্ক এরর! আবার চেষ্টা করুন।');
+
+      setOrders(prev => prev.map(o => o.id === orderToFinalize.id ? updatedOrder : o));
+      if (selectedOrder?.id === orderToFinalize.id) {
+        setSelectedOrder(updatedOrder);
+      }
+      setLeadFilterTab('FINALIZED');
+      setEditingOrder(null);
+      setPreviewInvoiceOrder(updatedOrder);
+      setPreviewModalType('invoice');
     } finally {
       setIsSavingEdit(false);
     }
@@ -530,7 +553,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   };
 
   return (
-    <div className="space-y-8 pb-20 font-bn max-w-7xl mx-auto">
+    <div className="space-y-8 pb-20 font-bn w-full mx-auto">
       
       {/* Top Header & Navigation Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-200 pb-3 mb-2">
@@ -661,7 +684,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     <FileText className="w-5 h-5 text-blue-600" />
                     <span>শিক্ষার্থী ও আবেদনের বিবরণ</span>
                   </h2>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {!selectedOrder.isFinalized && selectedOrder.orderStatus !== 'Finalized' && (
+                      <button
+                        onClick={() => handleFinalizeOrder(selectedOrder)}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>ফাইনাল করুন</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={(e) => openEditModal(selectedOrder, e)}
                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer"
@@ -669,7 +702,30 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       <Edit className="w-3.5 h-3.5" />
                       <span>তথ্য এডিট করুন</span>
                     </button>
-                    <span className="text-xs text-slate-400 font-mono hidden sm:inline">
+
+                    <button
+                      onClick={() => {
+                        setPreviewInvoiceOrder(selectedOrder);
+                        setPreviewModalType('invoice');
+                      }}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition border border-slate-300 cursor-pointer"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-blue-600" />
+                      <span>ইনভয়েস</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setPreviewInvoiceOrder(selectedOrder);
+                        setPreviewModalType('receipt');
+                      }}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition border border-slate-300 cursor-pointer"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>রসিদ</span>
+                    </button>
+
+                    <span className="text-xs text-slate-400 font-mono hidden sm:inline ml-1">
                       তারিখ: {new Date(selectedOrder.createdAt).toLocaleString('bn-BD')}
                     </span>
                   </div>
@@ -677,21 +733,65 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs sm:text-sm">
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1.5">
-                    <span className="text-slate-500 text-xs block font-bold">শিক্ষার্থীর নাম:</span>
-                    <span className="font-extrabold text-slate-900 text-base">{selectedOrder.studentName}</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 text-xs block font-bold">শিক্ষার্থীর নাম:</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(selectedOrder.studentName, 'studentName')}
+                        className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        {copiedField === 'studentName' ? (
+                          <span className="text-emerald-700 flex items-center gap-0.5"><Check className="w-3 h-3 stroke-[3]" /> কপি হয়েছে</span>
+                        ) : (
+                          <span className="flex items-center gap-0.5"><Copy className="w-3 h-3" /> কপি</span>
+                        )}
+                      </button>
+                    </div>
+                    <span className="font-extrabold text-slate-900 text-base block">{selectedOrder.studentName}</span>
                     {selectedOrder.fatherName && <p className="text-slate-600 text-xs">পিতা: {selectedOrder.fatherName}</p>}
                     {selectedOrder.motherName && <p className="text-slate-600 text-xs">মাতা: {selectedOrder.motherName}</p>}
                   </div>
 
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1.5">
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2">
                     <span className="text-slate-500 text-xs block font-bold">পরীক্ষার তথ্য:</span>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-blue-600 text-white font-mono font-bold px-2.5 py-0.5 rounded-lg text-xs">
-                        রোল: {selectedOrder.roll}
-                      </span>
-                      <span className="bg-slate-200 text-slate-800 font-mono font-bold px-2.5 py-0.5 rounded-lg text-xs">
-                        রেজি: {selectedOrder.reg}
-                      </span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <span className="bg-blue-600 text-white font-mono font-bold px-2.5 py-1 rounded-lg text-xs">
+                          রোল: {selectedOrder.roll}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedOrder.roll, 'roll')}
+                          className="p-1 bg-blue-100 hover:bg-blue-200 text-blue-900 rounded-lg text-[11px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                          title="রোল কপি করুন"
+                        >
+                          {copiedField === 'roll' ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[3]" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <span className="bg-slate-200 text-slate-800 font-mono font-bold px-2.5 py-1 rounded-lg text-xs">
+                          রেজি: {selectedOrder.reg || 'N/A'}
+                        </span>
+                        {selectedOrder.reg && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(selectedOrder.reg, 'reg')}
+                            className="p-1 bg-slate-200 hover:bg-slate-300 text-slate-900 rounded-lg text-[11px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                            title="রেজিস্ট্রেশন কপি করুন"
+                          >
+                            {copiedField === 'reg' ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-700 stroke-[3]" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-blue-800 font-bold text-xs pt-1">
                       বোর্ড: {selectedOrder.board} ({selectedOrder.exam || 'SSC'} - {selectedOrder.year || 2026})
@@ -699,7 +799,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   </div>
 
                   <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-1.5">
-                    <span className="text-slate-500 text-xs block font-bold">যোগাযোগের নম্বর:</span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 text-xs block font-bold">যোগাযোগের নম্বর:</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(selectedOrder.phone, 'phone')}
+                        className="px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        {copiedField === 'phone' ? (
+                          <span className="text-emerald-700 flex items-center gap-0.5"><Check className="w-3 h-3 stroke-[3]" /> কপি হয়েছে</span>
+                        ) : (
+                          <span className="flex items-center gap-0.5"><Copy className="w-3 h-3" /> কপি ফোন</span>
+                        )}
+                      </button>
+                    </div>
                     <p className="font-mono font-bold text-slate-900">{selectedOrder.phone} (মোবাইল)</p>
                     <p className="font-mono text-emerald-700 font-bold">{selectedOrder.whatsapp || selectedOrder.phone} (WhatsApp)</p>
                   </div>
@@ -707,23 +820,90 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   <div className="bg-emerald-50/80 p-4 rounded-2xl border border-emerald-200 space-y-1.5">
                     <span className="text-emerald-800 text-xs block font-bold">পেমেন্ট বিবরণী:</span>
                     <p className="font-extrabold text-emerald-900 text-lg font-mono">৳{selectedOrder.totalFee} BDT</p>
-                    <p className="font-mono text-xs text-emerald-800">
-                      TrxID: <strong className="font-bold">{selectedOrder.trxId}</strong> ({selectedOrder.paymentMethod})
-                    </p>
+                    <div className="flex items-center justify-between gap-1 pt-0.5">
+                      <p className="font-mono text-xs text-emerald-800">
+                        TrxID: <strong className="font-bold">{selectedOrder.trxId}</strong> ({selectedOrder.paymentMethod})
+                      </p>
+                      {selectedOrder.trxId && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedOrder.trxId, 'trxId')}
+                          className="px-2 py-0.5 bg-emerald-200 hover:bg-emerald-300 text-emerald-950 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition shrink-0"
+                        >
+                          {copiedField === 'trxId' ? (
+                            <span className="text-emerald-900 flex items-center gap-0.5"><Check className="w-3 h-3 stroke-[3]" /> কপি হয়েছে</span>
+                          ) : (
+                            <span className="flex items-center gap-0.5"><Copy className="w-3 h-3" /> কপি</span>
+                          )}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Selected Subjects List */}
-                <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200/80 space-y-2">
-                  <span className="text-xs font-bold text-blue-900 block">
-                    আবেদনকৃত বিষয়সমূহ ({selectedOrder.subjects.length} টি বিষয়):
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedOrder.subjects.map((code, idx) => (
-                      <span key={code} className="bg-white text-blue-900 font-bold px-3 py-1 rounded-xl border border-blue-200 text-xs font-mono shadow-xs">
-                        {code} - {selectedOrder.subjectNamesBn ? selectedOrder.subjectNamesBn[idx] : `বিষয় কোড ${code}`}
-                      </span>
-                    ))}
+                {/* Selected Subjects List (LINE BY LINE WITH COPY BUTTONS) */}
+                <div className="bg-blue-50/80 p-4 sm:p-5 rounded-2xl border border-blue-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-blue-200/80 pb-2.5">
+                    <span className="text-xs sm:text-sm font-extrabold text-blue-950 flex items-center gap-1.5">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <span>আবেদনকৃত বিষয়সমূহ ({selectedOrder.subjects.length} টি বিষয় - লাইন বাই লাইন):</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSubLines = selectedOrder.subjects.map((code, idx) => {
+                          const subName = selectedOrder.subjectNamesBn ? selectedOrder.subjectNamesBn[idx] : `বিষয় কোড ${code}`;
+                          return `${code} - ${subName}`;
+                        }).join('\n');
+                        copyToClipboard(allSubLines, 'all_subjects');
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                    >
+                      {copiedField === 'all_subjects' ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                          <span>সব বিষয় কপি হয়েছে!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>সকল বিষয় একসাথে কপি করুন</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 pt-1 font-bn">
+                    {selectedOrder.subjects.map((code, idx) => {
+                      const nameBn = selectedOrder.subjectNamesBn ? selectedOrder.subjectNamesBn[idx] : `বিষয় কোড ${code}`;
+                      const lineText = `${code} - ${nameBn}`;
+                      return (
+                        <div 
+                          key={code + '-' + idx} 
+                          className="bg-white p-3 rounded-xl border border-blue-200/90 shadow-2xs flex items-center justify-between gap-3 hover:border-blue-400 transition"
+                        >
+                          <div className="flex items-center gap-2.5 text-slate-900 font-extrabold text-xs sm:text-sm">
+                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0"></span>
+                            <span className="font-mono bg-blue-100 text-blue-900 px-2 py-0.5 rounded-lg text-xs font-black">
+                              {code}
+                            </span>
+                            <span>{nameBn}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(lineText, `sub_${idx}`)}
+                            className="text-xs text-slate-700 hover:text-blue-700 font-bold bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition cursor-pointer shrink-0"
+                            title="কপি করুন"
+                          >
+                            {copiedField === `sub_${idx}` ? (
+                              <span className="text-emerald-700 font-black flex items-center gap-0.5"><Check className="w-3.5 h-3.5" /> কপি হয়েছে</span>
+                            ) : (
+                              <span className="flex items-center gap-0.5"><Copy className="w-3.5 h-3.5" /> কপি</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -762,21 +942,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     value={selectedOrder.orderStatus}
                     onChange={e => {
                       const newStat = e.target.value as OrderStatus;
+                      const targetPayment = 
+                        newStat === 'Cancelled' ? 'Unverified' :
+                        ['Pending', 'Contacted', 'Payment Pending'].includes(newStat) ? 'Reviewing' : 'Paid';
                       requestStatusChangeWithConfirmation(
                         selectedOrder.id,
                         newStat,
-                        newStat === 'Pending' ? 'Reviewing' : 'Paid',
+                        targetPayment,
                         adminNoteInput || `স্ট্যাটাস পরিবর্তন: ${newStat}`
                       );
                     }}
                     className="w-full bg-white border-2 border-blue-600 text-slate-900 font-extrabold p-3 rounded-2xl text-xs sm:text-sm focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer"
                   >
-                    <option value="Pending">1. Pending (যাচাইাধীন / Reviewing)</option>
-                    <option value="Payment Verified">2. Payment Verified (পেমেন্ট কনফার্মড)</option>
-                    <option value="Processing">3. Processing (Processing by Abedoni)</option>
-                    <option value="SMS Sent">4. SMS Sent</option>
-                    <option value="Completed">5. Completed (আবেদন ১০০% সফলভাবে সম্পন্ন)</option>
-                    <option value="Cancelled">6. Cancelled (বাতিল / পেমেন্ট ইস্যু)</option>
+                    <option value="Pending">1. Pending (যাচাইাধীন)</option>
+                    <option value="Contacted">2. Contacted (যোগাযোগ করা হয়েছে)</option>
+                    <option value="Payment Pending">3. Payment Pending (পেমেন্ট প্রসেসিং)</option>
+                    <option value="Payment Verified">4. Payment Verified (পেমেন্ট কনফার্মড)</option>
+                    <option value="Processing">5. Processing (প্রসেসিং)</option>
+                    <option value="Completed">6. Completed (আবেদন ১০০% সফলভাবে সম্পন্ন)</option>
+                    <option value="Cancelled">7. Cancelled (বাতিল / পেমেন্ট ইস্যু)</option>
                   </select>
                 </div>
 
@@ -1071,12 +1255,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
         /* 3. ORDERS LIST TABLE VIEW */
         /* ------------------------------------------------------------- */
         <>
-          {/* Sub-Tab Filter Bar: Leads vs Finalized Orders */}
-          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+          {/* Sub-Tab Filter Bar: Leads vs Finalized Orders vs Complete */}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
             <button
               type="button"
               onClick={() => setLeadFilterTab('ALL')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[90px] py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 leadFilterTab === 'ALL'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
@@ -1091,34 +1275,51 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
             <button
               type="button"
               onClick={() => setLeadFilterTab('LEADS')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[110px] py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 leadFilterTab === 'LEADS'
                   ? 'bg-amber-500 text-white shadow-xs'
                   : 'text-amber-800 hover:text-amber-950 hover:bg-amber-50/50'
               }`}
             >
-              <span>📌 পেন্ডিং লিড</span>
+              <span>📌 ১. পেন্ডিং লিড</span>
               <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
                 leadFilterTab === 'LEADS' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'
               }`}>
-                {orders.filter(o => !o.isFinalized && o.orderStatus !== 'Finalized').length}
+                {orders.filter(o => !o.isFinalized && o.orderStatus !== 'Finalized' && o.orderStatus !== 'Completed').length}
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setLeadFilterTab('FINALIZED')}
-              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`flex-1 min-w-[110px] py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
                 leadFilterTab === 'FINALIZED'
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : 'text-blue-800 hover:text-blue-950 hover:bg-blue-50/50'
+              }`}
+            >
+              <span>⚡ ২. ফাইনাল অর্ডার</span>
+              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
+                leadFilterTab === 'FINALIZED' ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-900'
+              }`}>
+                {orders.filter(o => (o.isFinalized || o.orderStatus === 'Finalized') && o.orderStatus !== 'Completed').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadFilterTab('COMPLETED')}
+              className={`flex-1 min-w-[110px] py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                leadFilterTab === 'COMPLETED'
                   ? 'bg-emerald-600 text-white shadow-xs'
                   : 'text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50/50'
               }`}
             >
-              <span>✅ ফাইনাল অর্ডার</span>
+              <span>🎉 ৩. সম্পূর্ণ (Complete)</span>
               <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
-                leadFilterTab === 'FINALIZED' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'
+                leadFilterTab === 'COMPLETED' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'
               }`}>
-                {orders.filter(o => o.isFinalized || o.orderStatus === 'Finalized').length}
+                {orders.filter(o => o.orderStatus === 'Completed').length}
               </span>
             </button>
           </div>
@@ -1182,8 +1383,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
           {/* Mobile Orders Card List (visible on mobile < md) */}
           <div className="block md:hidden space-y-3">
             {orders.filter(ord => {
-              if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
-              if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+              if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized' && ord.orderStatus !== 'Completed';
+              if (leadFilterTab === 'FINALIZED') return (ord.isFinalized || ord.orderStatus === 'Finalized') && ord.orderStatus !== 'Completed';
+              if (leadFilterTab === 'COMPLETED') return ord.orderStatus === 'Completed';
               return true;
             }).length === 0 ? (
               <div className="bg-white p-6 rounded-2xl text-center text-slate-500 font-bold border border-slate-200">
@@ -1191,8 +1393,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               </div>
             ) : (
               orders.filter(ord => {
-                if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
-                if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized' && ord.orderStatus !== 'Completed';
+                if (leadFilterTab === 'FINALIZED') return (ord.isFinalized || ord.orderStatus === 'Finalized') && ord.orderStatus !== 'Completed';
+                if (leadFilterTab === 'COMPLETED') return ord.orderStatus === 'Completed';
                 return true;
               }).map(ord => (
                 <div 
@@ -1211,11 +1414,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       </span>
                     </div>
                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
-                      ord.isFinalized || ord.orderStatus === 'Finalized'
+                      ord.orderStatus === 'Completed'
                         ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                        : ord.isFinalized || ord.orderStatus === 'Finalized'
+                        ? 'bg-blue-100 text-blue-900 border-blue-300'
                         : 'bg-amber-100 text-amber-900 border-amber-300'
                     }`}>
-                      {ord.isFinalized || ord.orderStatus === 'Finalized' ? '✅ Finalized' : '📌 Pending Lead'}
+                      {ord.orderStatus === 'Completed' ? '🎉 Complete' : ord.isFinalized || ord.orderStatus === 'Finalized' ? '⚡ Finalized' : '📌 Pending Lead'}
                     </span>
                   </div>
 
@@ -1244,72 +1449,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
-                    {!ord.isFinalized && ord.orderStatus !== 'Finalized' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditModal(ord, e);
-                        }}
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 shadow-xs"
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        <span>ফাইনাল করুন</span>
-                      </button>
-                    )}
-
-                    <a
-                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, '')}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 shadow-xs"
-                      title="Open WhatsApp Chat"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>WhatsApp</span>
-                    </a>
-
-                    <a
-                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappInvoiceMessage(ord))}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 border border-emerald-300"
-                      title="Send Invoice on WhatsApp"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Send Invoice on WhatsApp</span>
-                    </a>
-
-                    <a
-                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappReceiptMessage(ord))}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 border border-emerald-300"
-                      title="Send Receipt on WhatsApp"
-                    >
-                      <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Send Receipt on WhatsApp</span>
-                    </a>
-
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                    <span className="text-[11px] text-slate-500 font-medium">কাস্টমার তথ্য ও মেসেজ পাঠাতে ক্লিক করুন</span>
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPreviewInvoiceOrder(ord);
-                        setPreviewModalType('invoice');
+                      onClick={() => {
+                        setSelectedOrder(ord);
+                        setAdminNoteInput(ord.adminNotes || '');
                       }}
-                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 border border-slate-300"
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl text-xs flex items-center gap-1 shadow-xs cursor-pointer"
                     >
-                      <span>🧾 মেমো</span>
-                    </button>
-
-                    <button
-                      onClick={(e) => openEditModal(ord, e)}
-                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1"
-                    >
-                      <Edit className="w-3.5 h-3.5" />
+                      <FileText className="w-3.5 h-3.5 text-blue-400" />
+                      <span>ডিটেইলস (Details)</span>
                     </button>
                   </div>
                 </div>
@@ -1334,8 +1484,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {orders.filter(ord => {
-                    if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
-                    if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                    if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized' && ord.orderStatus !== 'Completed';
+                    if (leadFilterTab === 'FINALIZED') return (ord.isFinalized || ord.orderStatus === 'Finalized') && ord.orderStatus !== 'Completed';
+                    if (leadFilterTab === 'COMPLETED') return ord.orderStatus === 'Completed';
                     return true;
                   }).length === 0 ? (
                     <tr>
@@ -1345,8 +1496,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     </tr>
                   ) : (
                     orders.filter(ord => {
-                      if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
-                      if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                      if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized' && ord.orderStatus !== 'Completed';
+                      if (leadFilterTab === 'FINALIZED') return (ord.isFinalized || ord.orderStatus === 'Finalized') && ord.orderStatus !== 'Completed';
+                      if (leadFilterTab === 'COMPLETED') return ord.orderStatus === 'Completed';
                       return true;
                     }).map(ord => (
                       <tr 
@@ -1395,73 +1547,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                           </span>
                         </td>
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
-                          {!ord.isFinalized && ord.orderStatus !== 'Finalized' && (
-                            <button
-                              onClick={(e) => openEditModal(ord, e)}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
-                              title="Finalize Order"
-                            >
-                              <CheckCircle className="w-3.5 h-3.5" />
-                              <span>ফাইনাল করুন</span>
-                            </button>
-                          )}
-
-                          <a
-                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, '')}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
-                            title="Open WhatsApp Chat"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            <span>WhatsApp</span>
-                          </a>
-
-                          <a
-                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappInvoiceMessage(ord))}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-emerald-300 inline-flex items-center gap-1"
-                            title="Send Invoice on WhatsApp"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>Send Invoice on WhatsApp</span>
-                          </a>
-
-                          <a
-                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappReceiptMessage(ord))}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-emerald-300 inline-flex items-center gap-1"
-                            title="Send Receipt on WhatsApp"
-                          >
-                            <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />
-                            <span>Send Receipt on WhatsApp</span>
-                          </a>
-
                           <button
                             onClick={() => {
-                              setPreviewInvoiceOrder(ord);
-                              setPreviewModalType('invoice');
+                              setSelectedOrder(ord);
+                              setAdminNoteInput(ord.adminNotes || '');
                             }}
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-slate-300 inline-flex items-center gap-1"
-                            title="Invoice & Receipt"
+                            className="bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1.5"
                           >
-                            <span>🧾 মেমো</span>
-                          </button>
-
-                          <button
-                            onClick={(e) => openEditModal(ord, e)}
-                            className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
-                            title="Edit Student Info"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
+                            <FileText className="w-3.5 h-3.5 text-blue-400" />
+                            <span>ডিটেইলস (Details)</span>
                           </button>
 
                           {adminRole !== 'moderator' && (
                             <button
                               onClick={(e) => triggerDeleteOrder(ord, e)}
-                              className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                              className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-rose-300 inline-flex items-center gap-1"
                               title="Delete Order"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -2686,17 +2786,81 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 </div>
               </div>
 
-              {/* Subject Codes */}
-              <div>
-                <label className="block font-bold text-slate-800 mb-1">বিষয় কোডসমূহ (কমা দিয়ে আলাদা করুন)</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="যেমন: 101, 107, 108"
-                  value={editForm.subjects}
-                  onChange={e => setEditForm({ ...editForm, subjects: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                />
+              {/* Interactive Subject Selection & Codes */}
+              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <div className="flex items-center justify-between">
+                  <label className="block font-extrabold text-slate-800 text-xs sm:text-sm">
+                    বিষয়সমূহ সিলেক্ট করুন (Select Subjects)
+                  </label>
+                  <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-200">
+                    {editForm.subjects.split(',').map(s => s.trim()).filter(Boolean).length} টি বিষয় নির্বাচিত
+                  </span>
+                </div>
+                
+                <p className="text-[11px] text-slate-500 font-medium">
+                  নিচের তালিকায় ক্লিক করে বিষয় যুক্ত বা বাদ দিন (ফি স্বয়ংক্রিয়ভাবে হিসাব হবে):
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-white shadow-inner">
+                  {SSC_SUBJECTS.map((subj) => {
+                    const selectedCodes = editForm.subjects.split(',').map(s => s.trim()).filter(Boolean);
+                    const isSelected = selectedCodes.includes(subj.code);
+                    return (
+                      <button
+                        key={subj.code}
+                        type="button"
+                        onClick={() => {
+                          let updated: string[];
+                          if (isSelected) {
+                            updated = selectedCodes.filter(c => c !== subj.code);
+                          } else {
+                            updated = [...selectedCodes, subj.code];
+                          }
+                          const newSubjStr = updated.join(', ');
+                          const calcFee = updated.length > 0 ? (updated.length * 150 + 49) : 0;
+                          setEditForm(prev => ({
+                            ...prev,
+                            subjects: newSubjStr,
+                            totalFee: calcFee > 0 ? calcFee : prev.totalFee
+                          }));
+                        }}
+                        className={`p-2 rounded-xl text-left text-xs font-bold transition flex items-center justify-between gap-1 border cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                            : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-blue-50 hover:border-blue-300'
+                        }`}
+                      >
+                        <div className="truncate">
+                          <span className="font-mono text-[10px] opacity-80 block">কোট: {subj.code}</span>
+                          <span className="truncate block leading-tight">{subj.nameBn}</span>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 shrink-0 text-white" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="pt-1">
+                  <label className="block font-bold text-slate-700 text-xs mb-1">
+                    কাস্টম বিষয় কোড টেক্সট (Manual Code Input):
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="যেমন: 101, 107, 108"
+                    value={editForm.subjects}
+                    onChange={e => {
+                      const newVal = e.target.value;
+                      const parsed = newVal.split(',').map(s => s.trim()).filter(Boolean);
+                      setEditForm(prev => ({
+                        ...prev,
+                        subjects: newVal,
+                        totalFee: parsed.length > 0 ? (parsed.length * 150 + 49) : prev.totalFee
+                      }));
+                    }}
+                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               {/* Form Actions */}
@@ -2741,8 +2905,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
       {/* Digital Invoice / Receipt Preview Popup Modal */}
       {previewInvoiceOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 my-8 print:shadow-none print:m-0 print:border-none print:p-0">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn print:static print:bg-transparent print:p-0 print:m-0 print:overflow-visible">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 my-8 print:shadow-none print:m-0 print:border-none print:p-0 print:space-y-0 print:max-w-none print:w-full">
             
             {/* Header / Mode Switcher */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 print:hidden">
@@ -2772,10 +2936,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               </div>
 
               <button
+                type="button"
                 onClick={() => setPreviewInvoiceOrder(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                title="বন্ধ করুন"
               >
                 <X className="w-4 h-4" />
+                <span>বন্ধ করুন</span>
               </button>
             </div>
 
@@ -2783,48 +2950,59 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
             <InvoiceCard order={previewInvoiceOrder} type={previewModalType} settings={appSettings} />
 
             {/* Actions Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>প্রিন্ট / PDF সেভ করুন</span>
-              </button>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>প্রিন্ট করুন (Print)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewInvoiceOrder(null)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                  <span>বন্ধ করুন (Close)</span>
+                </button>
+              </div>
 
               <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                 <a
                   href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, '')}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
                   title="Open WhatsApp Chat"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  <span>WhatsApp Chat</span>
+                  <span>WhatsApp</span>
                 </a>
 
                 <a
                   href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, generateWhatsappInvoiceMessage(previewInvoiceOrder))}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
                   title="Send Invoice on WhatsApp"
                 >
                   <FileText className="w-4 h-4 text-emerald-700" />
-                  <span>Send Invoice on WhatsApp</span>
+                  <span>Invoice WA</span>
                 </a>
 
                 <a
                   href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, generateWhatsappReceiptMessage(previewInvoiceOrder))}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
                   title="Send Receipt on WhatsApp"
                 >
                   <CheckCircle className="w-4 h-4 text-emerald-700" />
-                  <span>Send Receipt on WhatsApp</span>
+                  <span>Receipt WA</span>
                 </a>
               </div>
             </div>
