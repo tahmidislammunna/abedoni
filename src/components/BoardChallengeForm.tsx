@@ -17,7 +17,8 @@ import {
   BOARDS_LIST, 
   SSC_SUBJECTS, 
   generateAssistanceRequestWhatsappMessage, 
-  getWhatsappDirectUrl 
+  getWhatsappDirectUrl,
+  calculateTotalOfficialFee 
 } from '../data/boardsAndSubjects';
 import { EducationBoard } from '../types';
 import { getAppSettings } from '../data/appSettings';
@@ -93,7 +94,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
     const subjectNames = getSelectedSubjectNames(selectedSubjectCodes);
 
     const totalAmt = selectedSubjectCodes.length > 0
-      ? (selectedSubjectCodes.length * boardFeePerSub) + platformFee
+      ? calculateTotalOfficialFee(selectedSubjectCodes) + platformFee
       : 0;
 
     let leadId = '';
@@ -363,7 +364,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                   <div className="space-y-1.5 text-xs">
                     <div className="flex justify-between text-slate-300">
                       <span>অফিশিয়াল বোর্ড ফি:</span>
-                      <span className="font-mono font-bold">৳{selfSelectedSubjects.length * boardFeePerSub}</span>
+                      <span className="font-mono font-bold">৳{calculateTotalOfficialFee(selfSelectedSubjects)}</span>
                     </div>
                     <div className="flex justify-between text-emerald-400">
                       <span>আবেদনী সার্ভিস ফি:</span>
@@ -375,7 +376,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                 <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
                   <span className="text-xs font-bold text-slate-300">সর্বমোট প্রদেয় ফি:</span>
                   <span className="text-2xl font-black text-emerald-400 font-mono">
-                    ৳{selfSelectedSubjects.length * boardFeePerSub}
+                    ৳{calculateTotalOfficialFee(selfSelectedSubjects)}
                   </span>
                 </div>
               </div>

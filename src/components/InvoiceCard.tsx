@@ -108,10 +108,15 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ order, type = 'invoice
   const resolvedSubjects = resolveOrderSubjects(order);
   const subjectCount = resolvedSubjects.length;
 
-  const officialFeePerSub = currentSettings.officialBoardFee || 150;
-  const calculatedOfficialFee = order.officialFee || (subjectCount * officialFeePerSub);
-  const calculatedPlatformFee = order.platformFee || currentSettings.abedoniServiceFee || 49;
-  const grandTotal = order.totalFee || (calculatedOfficialFee + calculatedPlatformFee);
+  const calculatedOfficialFee = resolvedSubjects.reduce((sum, s) => sum + s.officialFee, 0);
+  const fixedServiceFee = currentSettings.abedoniServiceFee || 49;
+  
+  // If order totalFee was manually increased in Admin, calculate custom extra charge if any
+  const customExtraFee = (order.totalFee && order.totalFee > (calculatedOfficialFee + fixedServiceFee))
+    ? (order.totalFee - calculatedOfficialFee - fixedServiceFee)
+    : 0;
+
+  const grandTotal = order.totalFee || (calculatedOfficialFee + fixedServiceFee + customExtraFee);
 
   const boardObj = BOARDS_LIST.find(b => b.code === order.board);
   const boardDisplayName = boardObj ? `${boardObj.nameEn} Board` : `${order.board} Board`;
@@ -230,23 +235,39 @@ export const InvoiceCard: React.FC<InvoiceCardProps> = ({ order, type = 'invoice
             <tr className="bg-slate-50/50">
               <td className="py-3 px-2">
                 <span className="font-bold text-slate-900 block">Abedoni Online Service & Processing Fee</span>
-                <span className="text-[10px] text-slate-500 block">অনলাইন প্রসেসিং ও সাপোর্ট চার্জ</span>
+                <span className="text-[10px] text-slate-500 block">অনলাইন প্রসেসিং ও সাপোর্ট চার্জ (ফিক্সড ৳৪৯)</span>
               </td>
-              <td className="py-3 px-2 text-right font-mono font-bold text-blue-900">৳{calculatedPlatformFee}</td>
+              <td className="py-3 px-2 text-right font-mono font-bold text-blue-900">৳{fixedServiceFee}</td>
             </tr>
+
+            {customExtraFee > 0 && (
+              <tr className="bg-amber-50/40">
+                <td className="py-3 px-2">
+                  <span className="font-bold text-slate-900 block">Custom / Manual Additional Charge</span>
+                  <span className="text-[10px] text-slate-500 block">অন্যান্য কাস্টম সার্ভিস বা প্রসেসিং ফি</span>
+                </td>
+                <td className="py-3 px-2 text-right font-mono font-bold text-amber-900">৳{customExtraFee}</td>
+              </tr>
+            )}
           </tbody>
         </table>
 
         {/* Subtotal & Solid Black Total Box */}
         <div className="pt-4 space-y-2 text-xs sm:text-sm">
           <div className="flex justify-end gap-12 text-slate-700">
-            <span className="font-bold">Subtotal</span>
+            <span className="font-bold">Board Subtotal</span>
             <span className="font-mono font-bold">৳{calculatedOfficialFee}</span>
           </div>
-          <div className="flex justify-end gap-12 text-slate-700 pb-2">
+          <div className="flex justify-end gap-12 text-slate-700">
             <span className="font-bold">Service Fee</span>
-            <span className="font-mono font-bold">৳{calculatedPlatformFee}</span>
+            <span className="font-mono font-bold">৳{fixedServiceFee}</span>
           </div>
+          {customExtraFee > 0 && (
+            <div className="flex justify-end gap-12 text-slate-700">
+              <span className="font-bold">Custom Fee</span>
+              <span className="font-mono font-bold">৳{customExtraFee}</span>
+            </div>
+          )}
 
           <div className="bg-slate-900 text-white p-3.5 sm:p-4 font-black text-base sm:text-lg flex items-center justify-between w-full max-w-xs ml-auto shadow-md">
             <span>Total</span>

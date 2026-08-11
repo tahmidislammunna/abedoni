@@ -44,6 +44,7 @@ import { NewOrderModal } from './NewOrderModal';
 import { 
   BOARDS_LIST, 
   SSC_SUBJECTS,
+  calculateTotalOfficialFee,
   replaceTemplateVars,
   generateWhatsappInvoiceMessage,
   generateWhatsappReceiptMessage,
@@ -291,7 +292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
         trxId: customData?.trxId || orderToFinalize.trxId || 'OFFICIAL-PAID',
         paymentSenderPhone: customData?.paymentSenderPhone || orderToFinalize.paymentSenderPhone || customData?.phone || orderToFinalize.phone || '',
         paymentMethod: customData?.paymentMethod || orderToFinalize.paymentMethod || 'bKash',
-        totalFee: customData?.totalFee || orderToFinalize.totalFee || (parsedSubjects.length * 150 + 49),
+        totalFee: customData?.totalFee || orderToFinalize.totalFee || (calculateTotalOfficialFee(parsedSubjects) + 49),
         subjects: parsedSubjects,
       };
 
@@ -2609,20 +2610,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
         </div>
       )}
 
-      {/* Edit Student Order Information Modal */}
+      {/* Edit Student Order Information Modal (Full-width Responsive Grid) */}
       {editingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-2xl w-full shadow-2xl space-y-6 my-8 font-bn">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-150 overflow-y-auto">
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 sm:p-8 max-w-6xl w-full shadow-2xl space-y-6 my-auto font-bn max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 shrink-0">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                  <Edit className="w-5 h-5" />
+                <div className="w-11 h-11 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold shrink-0">
+                  <Edit className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold text-slate-900">
-                    শিক্ষার্থীর তথ্য সম্পাদন ও আপডেট করুন
+                  <h3 className="text-xl font-black text-slate-900">
+                    শিক্ষার্থীর আবেদন তথ্য সম্পাদনা ও আপডেট
                   </h3>
                   <p className="text-xs text-slate-500 font-mono">
                     Order ID: <span className="font-bold text-blue-600">{editingOrder.id}</span>
@@ -2630,178 +2631,188 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setEditingOrder(null)}
-                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Edit Form */}
-            <form onSubmit={handleSaveEditedOrder} className="space-y-4 text-xs sm:text-sm">
+            {/* Edit Form with Scrollable Content */}
+            <form onSubmit={handleSaveEditedOrder} className="space-y-6 overflow-y-auto pr-1 flex-1 text-xs sm:text-sm">
               
-              {/* Student Name */}
-              <div>
-                <label className="block font-bold text-slate-800 mb-1">শিক্ষার্থীর নাম (Student Name) *</label>
-                <input
-                  type="text"
-                  required
-                  value={editForm.studentName}
-                  onChange={e => setEditForm({ ...editForm, studentName: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {/* Row 1: Student & Exam Primary Details Grid */}
+              <div className="bg-slate-50/80 p-4 sm:p-5 rounded-2xl border border-slate-200/90 space-y-4">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <User className="w-4 h-4 text-blue-600" />
+                  <span>১. শিক্ষার্থী ও পরীক্ষা সংক্রান্ত তথ্য:</span>
+                </h4>
 
-              {/* Roll, Reg & Board */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">রোল নম্বর (Roll) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.roll}
-                    onChange={e => setEditForm({ ...editForm, roll: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="md:col-span-3">
+                    <label className="block font-bold text-slate-800 mb-1">শিক্ষার্থীর পূর্ণ নাম (Student Name) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.studentName}
+                      onChange={e => setEditForm({ ...editForm, studentName: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-extrabold text-slate-900 text-base focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">রেজিস্ট্রেশন নম্বর (Reg) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.reg}
-                    onChange={e => setEditForm({ ...editForm, reg: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">রোল নম্বর (Roll) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.roll}
+                      onChange={e => setEditForm({ ...editForm, roll: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-black text-slate-900 text-base focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">শিক্ষা বোর্ড *</label>
-                  <select
-                    value={editForm.board}
-                    onChange={e => setEditForm({ ...editForm, board: e.target.value as EducationBoard })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  >
-                    {BOARDS_LIST.map(b => (
-                      <option key={b.code} value={b.code}>{b.nameBn}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">রেজিস্ট্রেশন নম্বর (Reg) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.reg}
+                      onChange={e => setEditForm({ ...editForm, reg: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-black text-slate-900 text-base focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-              {/* Phone & WhatsApp */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">মোবাইল নম্বর (Phone) *</label>
-                  <input
-                    type="tel"
-                    required
-                    value={editForm.phone}
-                    onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">শিক্ষা বোর্ড *</label>
+                    <select
+                      value={editForm.board}
+                      onChange={e => setEditForm({ ...editForm, board: e.target.value as EducationBoard })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer"
+                    >
+                      {BOARDS_LIST.map(b => (
+                        <option key={b.code} value={b.code}>{b.nameBn}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">হোয়াটসঅ্যাপ (WhatsApp)</label>
-                  <input
-                    type="tel"
-                    value={editForm.whatsapp}
-                    onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">পিতার নাম (Father's Name)</label>
+                    <input
+                      type="text"
+                      value={editForm.fatherName}
+                      onChange={e => setEditForm({ ...editForm, fatherName: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-              {/* Father & Mother Names */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">পিতার নাম (Father's Name)</label>
-                  <input
-                    type="text"
-                    value={editForm.fatherName}
-                    onChange={e => setEditForm({ ...editForm, fatherName: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-bold text-slate-800 mb-1">মাতার নাম (Mother's Name)</label>
-                  <input
-                    type="text"
-                    value={editForm.motherName}
-                    onChange={e => setEditForm({ ...editForm, motherName: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">মাতার নাম (Mother's Name)</label>
+                    <input
+                      type="text"
+                      value={editForm.motherName}
+                      onChange={e => setEditForm({ ...editForm, motherName: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 text-slate-900 font-semibold focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Payment Details: TrxID, Sender Phone, Method, Total Fee */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div>
-                  <label className="block font-bold text-slate-700 text-xs mb-1">ট্রানজেকশন ID</label>
-                  <input
-                    type="text"
-                    required
-                    value={editForm.trxId}
-                    onChange={e => setEditForm({ ...editForm, trxId: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono uppercase font-bold text-xs"
-                  />
-                </div>
+              {/* Row 2: Contact & Payment Grid */}
+              <div className="bg-slate-50/80 p-4 sm:p-5 rounded-2xl border border-slate-200/90 space-y-4">
+                <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <span>২. যোগাযোগ ও পেমেন্ট বিবরণী:</span>
+                </h4>
 
-                <div>
-                  <label className="block font-bold text-slate-700 text-xs mb-1">প্রেরক নম্বর</label>
-                  <input
-                    type="text"
-                    value={editForm.paymentSenderPhone}
-                    onChange={e => setEditForm({ ...editForm, paymentSenderPhone: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono font-bold text-xs"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">মোবাইল নম্বর (Phone) *</label>
+                    <input
+                      type="tel"
+                      required
+                      value={editForm.phone}
+                      onChange={e => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 text-xs mb-1">পেমেন্ট মেথড</label>
-                  <select
-                    value={editForm.paymentMethod}
-                    onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-bold text-xs"
-                  >
-                    <option value="Bangla QR">Bangla QR</option>
-                    <option value="bKash">bKash</option>
-                    <option value="Nagad">Nagad</option>
-                    <option value="Rocket">Rocket</option>
-                    <option value="Upay">Upay</option>
-                  </select>
-                </div>
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">হোয়াটসঅ্যাপ (WhatsApp)</label>
+                    <input
+                      type="tel"
+                      value={editForm.whatsapp}
+                      onChange={e => setEditForm({ ...editForm, whatsapp: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block font-bold text-slate-700 text-xs mb-1">মোট ফি (৳)</label>
-                  <input
-                    type="number"
-                    value={editForm.totalFee}
-                    onChange={e => setEditForm({ ...editForm, totalFee: Number(e.target.value) })}
-                    className="w-full bg-white border border-slate-300 rounded-lg p-2 font-mono font-bold text-xs text-emerald-700"
-                  />
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">পেমেন্ট মাধ্যম</label>
+                    <select
+                      value={editForm.paymentMethod}
+                      onChange={e => setEditForm({ ...editForm, paymentMethod: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs cursor-pointer"
+                    >
+                      <option value="Bangla QR">Bangla QR</option>
+                      <option value="bKash">bKash</option>
+                      <option value="Nagad">Nagad</option>
+                      <option value="Rocket">Rocket</option>
+                      <option value="Upay">Upay</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">ট্রানজেকশন ID (TrxID)</label>
+                    <input
+                      type="text"
+                      required
+                      value={editForm.trxId}
+                      onChange={e => setEditForm({ ...editForm, trxId: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono uppercase font-black text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-800 mb-1">প্রেরক নম্বর (Sender Phone)</label>
+                    <input
+                      type="text"
+                      value={editForm.paymentSenderPhone}
+                      onChange={e => setEditForm({ ...editForm, paymentSenderPhone: e.target.value })}
+                      className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <label className="block font-bold text-slate-800 mb-1">
+                      মোট ফি (BDT ৳) <span className="text-xs font-normal text-slate-500">(বোর্ড ফি + ৳49 সার্ভিস)</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={editForm.totalFee}
+                      onChange={e => setEditForm({ ...editForm, totalFee: Number(e.target.value) })}
+                      className="w-full bg-white border border-emerald-400 rounded-xl p-3 font-mono font-black text-emerald-800 text-lg focus:ring-2 focus:ring-emerald-500 shadow-2xs"
+                    />
+                  </div>
                 </div>
               </div>
 
-              {/* Interactive Subject Selection & Codes */}
-              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div className="flex items-center justify-between">
-                  <label className="block font-extrabold text-slate-800 text-xs sm:text-sm">
-                    বিষয়সমূহ সিলেক্ট করুন (Select Subjects)
+              {/* Row 3: Interactive Subject Selection Grid */}
+              <div className="space-y-3 bg-blue-50/70 p-4 sm:p-5 rounded-2xl border border-blue-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-200 pb-2">
+                  <label className="block font-black text-blue-950 text-sm">
+                    ৩. বিষয়সমূহ নির্বাচন করুন (বাংলা/ইংরেজি = ৳৩০০, সাধারণ বিষয় = ৳১৫০)
                   </label>
-                  <span className="text-xs font-mono font-bold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-200">
-                    {editForm.subjects.split(',').map(s => s.trim()).filter(Boolean).length} টি বিষয় নির্বাচিত
+                  <span className="text-xs font-mono font-black text-blue-900 bg-white px-3 py-1 rounded-full border border-blue-300 shadow-2xs self-start sm:self-auto">
+                    {editForm.subjects.split(',').map(s => s.trim()).filter(Boolean).length} টি বিষয় সিলেক্টেড
                   </span>
                 </div>
                 
-                <p className="text-[11px] text-slate-500 font-medium">
-                  নিচের তালিকায় ক্লিক করে বিষয় যুক্ত বা বাদ দিন (ফি স্বয়ংক্রিয়ভাবে হিসাব হবে):
+                <p className="text-xs text-slate-600 font-medium">
+                  নিচের বাটনে ক্লিক করে বিষয় যুক্ত বা বাদ দিন (সরকারি বোর্ড ফি স্বয়ংক্রিয়ভাবে হিসাব হবে):
                 </p>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto p-1.5 border border-slate-200 rounded-xl bg-white shadow-inner">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-60 overflow-y-auto p-2 border border-blue-200 rounded-2xl bg-white shadow-inner">
                   {SSC_SUBJECTS.map((subj) => {
                     const selectedCodes = editForm.subjects.split(',').map(s => s.trim()).filter(Boolean);
                     const isSelected = selectedCodes.includes(subj.code);
@@ -2817,37 +2828,37 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                             updated = [...selectedCodes, subj.code];
                           }
                           const newSubjStr = updated.join(', ');
-                          const calcFee = updated.length > 0 ? (updated.length * 150 + 49) : 0;
+                          const calcFee = updated.length > 0 ? (calculateTotalOfficialFee(updated) + 49) : 0;
                           setEditForm(prev => ({
                             ...prev,
                             subjects: newSubjStr,
                             totalFee: calcFee > 0 ? calcFee : prev.totalFee
                           }));
                         }}
-                        className={`p-2 rounded-xl text-left text-xs font-bold transition flex items-center justify-between gap-1 border cursor-pointer ${
+                        className={`p-2.5 rounded-xl text-left text-xs font-bold transition flex items-center justify-between gap-1.5 border cursor-pointer ${
                           isSelected
                             ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
                             : 'bg-slate-50 text-slate-800 border-slate-200 hover:bg-blue-50 hover:border-blue-300'
                         }`}
                       >
                         <div className="truncate">
-                          <span className="font-mono text-[10px] opacity-80 block">কোট: {subj.code}</span>
-                          <span className="truncate block leading-tight">{subj.nameBn}</span>
+                          <span className="font-mono text-[10px] opacity-80 block">কোট: {subj.code} ({subj.fee === 300 ? '৳৩০০' : '৳১৫০'})</span>
+                          <span className="truncate block leading-tight font-extrabold">{subj.nameBn}</span>
                         </div>
-                        {isSelected && <Check className="w-4 h-4 shrink-0 text-white" />}
+                        {isSelected && <Check className="w-4 h-4 shrink-0 text-white stroke-[3]" />}
                       </button>
                     );
                   })}
                 </div>
 
-                <div className="pt-1">
-                  <label className="block font-bold text-slate-700 text-xs mb-1">
-                    কাস্টম বিষয় কোড টেক্সট (Manual Code Input):
+                <div className="pt-2">
+                  <label className="block font-bold text-slate-800 text-xs mb-1">
+                    ম্যানুয়াল বিষয় কোড ইনপুট (Manual Subjects Input):
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="যেমন: 101, 107, 108"
+                    placeholder="যেমন: 101, 107, 109"
                     value={editForm.subjects}
                     onChange={e => {
                       const newVal = e.target.value;
@@ -2855,29 +2866,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       setEditForm(prev => ({
                         ...prev,
                         subjects: newVal,
-                        totalFee: parsed.length > 0 ? (parsed.length * 150 + 49) : prev.totalFee
+                        totalFee: parsed.length > 0 ? (calculateTotalOfficialFee(parsed) + 49) : prev.totalFee
                       }));
                     }}
-                    className="w-full bg-white border border-slate-300 rounded-xl p-2.5 font-mono font-bold text-xs text-slate-900 focus:ring-2 focus:ring-blue-500"
+                    className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-xs sm:text-sm text-slate-900 focus:ring-2 focus:ring-blue-500 shadow-2xs"
                   />
                 </div>
               </div>
 
-              {/* Form Actions */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
+              {/* Form Actions Footer */}
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200 shrink-0">
                 <button
                   type="button"
                   onClick={() => setEditingOrder(null)}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs sm:text-sm hover:bg-slate-100 transition cursor-pointer"
                   disabled={isSavingEdit}
                 >
                   বাতিল করুন
                 </button>
-                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
                   <button
                     type="submit"
                     disabled={isSavingEdit}
-                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-3.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
                   >
                     <Save className="w-4 h-4" />
                     <span>{isSavingEdit ? 'সেভ করা হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
@@ -2888,7 +2899,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       type="button"
                       disabled={isSavingEdit}
                       onClick={() => handleFinalizeOrder(editingOrder, editForm)}
-                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-black px-6 py-3.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
                     >
                       <CheckCircle className="w-4 h-4" />
                       <span>{isSavingEdit ? 'প্রসেসিং...' : 'ফাইনাল অর্ডার করুন & ইনভয়েস পাঠান'}</span>
@@ -2905,19 +2916,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
       {/* Digital Invoice / Receipt Preview Popup Modal */}
       {previewInvoiceOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn print:static print:bg-transparent print:p-0 print:m-0 print:overflow-visible">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 my-8 print:shadow-none print:m-0 print:border-none print:p-0 print:space-y-0 print:max-w-none print:w-full">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/75 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn print:static print:bg-transparent print:p-0 print:m-0 print:overflow-visible">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-3xl w-full shadow-2xl my-auto flex flex-col max-h-[92vh] overflow-hidden print:shadow-none print:m-0 print:border-none print:p-0 print:max-w-none print:w-full print:max-h-none print:overflow-visible">
             
             {/* Header / Mode Switcher */}
-            <div className="flex items-center justify-between border-b border-slate-100 pb-4 print:hidden">
+            <div className="flex items-center justify-between border-b border-slate-200 p-4 sm:px-6 bg-slate-50/90 shrink-0 print:hidden">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setPreviewModalType('invoice')}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition cursor-pointer ${
                     previewModalType === 'invoice'
                       ? 'bg-slate-900 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   🧾 ইনভয়েস মেমো
@@ -2925,10 +2936,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 <button
                   type="button"
                   onClick={() => setPreviewModalType('receipt')}
-                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                  className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold transition cursor-pointer ${
                     previewModalType === 'receipt'
                       ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-white text-slate-700 hover:bg-slate-200 border border-slate-200'
                   }`}
                 >
                   ✅ অফিশিয়াল মানি রিসিট
@@ -2938,24 +2949,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               <button
                 type="button"
                 onClick={() => setPreviewInvoiceOrder(null)}
-                className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-200 border border-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
                 title="বন্ধ করুন"
               >
                 <X className="w-4 h-4" />
-                <span>বন্ধ করুন</span>
+                <span className="hidden sm:inline">বন্ধ করুন</span>
               </button>
             </div>
 
-            {/* Invoice Printable View Container */}
-            <InvoiceCard order={previewInvoiceOrder} type={previewModalType} settings={appSettings} />
+            {/* Invoice Printable View Container (Scrollable) */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 print:p-0 print:overflow-visible">
+              <InvoiceCard order={previewInvoiceOrder} type={previewModalType} settings={appSettings} />
+            </div>
 
-            {/* Actions Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden pt-2 border-t border-slate-100">
+            {/* Actions Bar (Footer Sticky) */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden p-4 sm:px-6 bg-slate-50 border-t border-slate-200 shrink-0">
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
                 >
                   <Printer className="w-4 h-4" />
                   <span>প্রিন্ট করুন (Print)</span>
@@ -2964,10 +2977,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 <button
                   type="button"
                   onClick={() => setPreviewInvoiceOrder(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-extrabold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-200"
+                  className="bg-white hover:bg-slate-200 text-slate-700 font-extrabold px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-300"
                 >
                   <X className="w-4 h-4" />
-                  <span>বন্ধ করুন (Close)</span>
+                  <span>বন্ধ (Close)</span>
                 </button>
               </div>
 

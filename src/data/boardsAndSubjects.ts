@@ -14,14 +14,38 @@ export const BOARDS_LIST: { code: EducationBoard; nameBn: string; nameEn: string
   { code: 'TEC', nameBn: 'কারিগরি বোর্ড (Technical)', nameEn: 'Technical', codeSms: 'TEC' },
 ];
 
-// Standard Board Challenge official fee per subject/paper in BDT (BDT 150)
+// Standard Board Challenge official fee per subject/paper in BDT (BDT 150 standard, BDT 300 for Bangla & English double papers)
 export const OFFICIAL_FEE_PER_SUBJECT = 150;
 export const ABEDONI_PLATFORM_FEE_PER_ORDER = 100;
 
+export function getSubjectOfficialFee(codeOrName: string): number {
+  if (!codeOrName) return 150;
+  const str = String(codeOrName).trim();
+  // Bangla (101) and English (107) cover 1st & 2nd papers (double paper fee 300 BDT)
+  if (
+    str === '101' || 
+    str === '107' || 
+    str.includes('101') || 
+    str.includes('107') || 
+    str.includes('বাংলা') || 
+    str.toLowerCase().includes('bangla') || 
+    str.includes('ইংরেজি') || 
+    str.toLowerCase().includes('english')
+  ) {
+    return 300;
+  }
+  return 150;
+}
+
+export function calculateTotalOfficialFee(subjectCodesOrNames: string[]): number {
+  if (!Array.isArray(subjectCodesOrNames) || subjectCodesOrNames.length === 0) return 0;
+  return subjectCodesOrNames.reduce((total, sub) => total + getSubjectOfficialFee(sub), 0);
+}
+
 export const SSC_SUBJECTS: SubjectItem[] = [
   // General
-  { code: '101', nameBn: 'বাংলা (Bangla First & Second)', nameEn: 'Bangla (1st & 2nd Paper)', fee: 150, category: 'General' },
-  { code: '107', nameBn: 'ইংরেজি (English First & Second)', nameEn: 'English (1st & 2nd Paper)', fee: 150, category: 'General' },
+  { code: '101', nameBn: 'বাংলা (১ম ও ২য় পত্র)', nameEn: 'Bangla (1st & 2nd Paper)', fee: 300, category: 'General' },
+  { code: '107', nameBn: 'ইংরেজি (১ম ও ২য় পত্র)', nameEn: 'English (1st & 2nd Paper)', fee: 300, category: 'General' },
   { code: '109', nameBn: 'গণিত (Mathematics)', nameEn: 'Mathematics', fee: 150, category: 'General' },
   { code: '154', nameBn: 'তথ্য ও যোগাযোগ প্রযুক্তি (ICT)', nameEn: 'ICT', fee: 150, category: 'General' },
   { code: '111', nameBn: 'ইসলাম ও নৈতিক শিক্ষা (Islam)', nameEn: 'Islamic Studies', fee: 150, category: 'General' },
@@ -176,7 +200,7 @@ export function generateWhatsappInvoiceMessage(order: any): string {
       : 'N/A';
 
   const numSubjects = Array.isArray(order.subjects) ? order.subjects.length : 1;
-  const officialFee = order.officialFee || (numSubjects * 150);
+  const officialFee = order.officialFee || calculateTotalOfficialFee(Array.isArray(order.subjects) ? order.subjects : []);
   const platformFee = order.platformFee || 49;
   const totalFee = order.totalFee || (officialFee + platformFee);
 
@@ -191,7 +215,7 @@ export function generateWhatsappInvoiceMessage(order: any): string {
 • **আবেদনকৃত বিষয়সমূহ:** ${subjectsStr}
 
 💰 **ফি বিবরণী:**
-• সরকারি বোর্ড ফি (${numSubjects}টি বিষয় × ৳150): ৳${officialFee}
+• সরকারি বোর্ড ফি (${numSubjects}টি বিষয়): ৳${officialFee}
 • আবেদনী অনলাইন সার্ভিস ফি: ৳${platformFee}
 • **সর্বমোট প্রদেয়/পরিশোধিত:** ৳${totalFee}
 
@@ -221,7 +245,7 @@ export function generateWhatsappReceiptMessage(order: any): string {
       : 'N/A';
 
   const numSubjects = Array.isArray(order.subjects) ? order.subjects.length : 1;
-  const officialFee = order.officialFee || (numSubjects * 150);
+  const officialFee = order.officialFee || calculateTotalOfficialFee(Array.isArray(order.subjects) ? order.subjects : []);
   const platformFee = order.platformFee || 49;
   const totalFee = order.totalFee || (officialFee + platformFee);
 

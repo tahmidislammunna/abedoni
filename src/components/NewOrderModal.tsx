@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, PlusCircle, Check, BookOpen, User, Phone as PhoneIcon, Hash, CreditCard, FileText, AlertCircle, Loader2 } from 'lucide-react';
 import { BoardChallengeOrder, EducationBoard, OrderStatus, PaymentMethod } from '../types';
-import { BOARDS_LIST, SSC_SUBJECTS, OFFICIAL_FEE_PER_SUBJECT } from '../data/boardsAndSubjects';
+import { BOARDS_LIST, SSC_SUBJECTS, OFFICIAL_FEE_PER_SUBJECT, calculateTotalOfficialFee } from '../data/boardsAndSubjects';
 import { AppSettings, DEFAULT_APP_SETTINGS } from '../data/appSettings';
 
 interface NewOrderModalProps {
@@ -37,8 +37,7 @@ export const NewOrderModal: React.FC<NewOrderModalProps> = ({
   // Auto calculate total amount when selected subjects change unless manually overridden
   useEffect(() => {
     if (!customAmountEdited) {
-      const subCount = selectedSubjectCodes.length;
-      const officialFee = subCount * OFFICIAL_FEE_PER_SUBJECT;
+      const officialFee = calculateTotalOfficialFee(selectedSubjectCodes);
       const platformFee = appSettings.abedoniServiceFee || 49;
       setTotalAmount(officialFee + platformFee);
     }
