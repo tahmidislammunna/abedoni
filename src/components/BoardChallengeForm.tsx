@@ -45,7 +45,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>('');
 
   // Fee Calculations
-  const boardFeePerSub = settings.officialBoardFee || 175;
+  const boardFeePerSub = settings.officialBoardFee || 150;
   const platformFee = settings.abedoniServiceFee || 49;
 
   const handleToggleSubjectAssisted = (code: string) => {
@@ -107,7 +107,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
           SSC ফলাফল পুনঃনিরীক্ষণ (বোর্ড চ্যালেঞ্জ)
         </h1>
         <p className="text-slate-600 text-xs sm:text-sm max-w-2xl mx-auto">
-          অফিশিয়াল অনলাইন পোর্টালে নিজে আবেদন করার ফ্রি গাইড অথবা আবেদনী-এর মাত্র ৳৪৯ সার্ভিস ফি-তে অভিজ্ঞ অনলাইন সহায়তা সেবা।
+          অফিশিয়াল অনলাইন পোর্টালে নিজে আবেদন করার ফ্রি গাইড অথবা আবেদনী-এর মাত্র ৳49 সার্ভিস ফি-তে অভিজ্ঞ অনলাইন সহায়তা সেবা।
         </p>
       </div>
 
@@ -151,7 +151,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
             <Headphones className="w-5 h-5" />
           </div>
           <div className="text-left">
-            <div className="text-sm sm:text-base leading-tight">২. অভিজ্ঞদের সহায়তা নিন (৳৪৯)</div>
+            <div className="text-sm sm:text-base leading-tight">২. অভিজ্ঞদের সহায়তা নিন (৳49)</div>
             <div className={`text-[11px] font-normal leading-tight ${activeMode === 'assisted' ? 'text-blue-100' : 'text-slate-500'}`}>
               আবেদনী টিমের ওয়াটসঅ্যাপ সাপোর্ট
             </div>
@@ -243,7 +243,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                   <span>অফিশিয়াল বোর্ড ফি পরিশোধ করুন</span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  প্রতি বিষয় ৳১৭৫ টাকা হিসেবে অনলাইন গেটওয়ের মাধ্যমে বিকাশ/নগদ/রকেট বা কার্ড দিয়ে অফিশিয়াল ফি পরিশোধ করুন।
+                  প্রতি বিষয় ৳{boardFeePerSub} টাকা হিসেবে অনলাইন গেটওয়ের মাধ্যমে বিকাশ/নগদ/রকেট বা কার্ড দিয়ে অফিশিয়াল ফি পরিশোধ করুন।
                 </p>
               </div>
 
@@ -272,7 +272,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
                   নিজে আবেদন করার ফি হিসাব করুন
                 </h3>
                 <p className="text-xs text-slate-500">
-                  অফিশিয়াল ফি প্রতি বিষয় ৳১৭৫। নিজে আবেদন করলে আবেদনী সার্ভিস ফি ৳০!
+                  অফিশিয়াল ফি প্রতি বিষয় ৳{boardFeePerSub}। নিজে আবেদন করলে আবেদনী সার্ভিস ফি ৳০!
                 </p>
               </div>
               <span className="bg-emerald-100 text-emerald-800 text-xs font-black px-2.5 py-1 rounded-full">

@@ -7,8 +7,8 @@ export const FAQView: React.FC = () => {
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [openIndex, setOpenIndex] = useState<number | null>(0);
   const settings = getAppSettings();
-  const boardFee = settings.officialBoardFee || 175;
-  const platformFee = settings.abedoniServiceFee || 99;
+  const boardFee = settings.officialBoardFee || 150;
+  const platformFee = settings.abedoniServiceFee || 49;
   const smsFee = settings.smsFeePerSubject || 12;
 
   useEffect(() => {

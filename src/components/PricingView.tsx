@@ -8,7 +8,7 @@ interface PricingViewProps {
 
 export const PricingView: React.FC<PricingViewProps> = ({ onStartApplication }) => {
   const settings = getAppSettings();
-  const boardFee = settings.officialBoardFee || 175;
+  const boardFee = settings.officialBoardFee || 150;
   const platformFee = settings.abedoniServiceFee || 49;
 
   return (

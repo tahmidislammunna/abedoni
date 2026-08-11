@@ -42,7 +42,7 @@ export const SeoHead: React.FC<SeoHeadProps> = ({
           break;
         case 'pricing':
           pageTitle = `ফি ও প্রসেসিং চার্জ তালিকা - SSC বোর্ড চ্যালেঞ্জ ২০২৬ | ${siteName}`;
-          metaDescription = `SSC বোর্ড চ্যালেঞ্জ প্রতি বিষয়ের সরকারি বোর্ড ফি (৳${settings.officialBoardFee || 175}), SMS প্রসেসিং ফি (৳${settings.smsFeePerSubject || 6}) ও আবেদনী সার্ভিস চার্জের পূর্ণাঙ্গ স্বচ্ছ তালিকা।`;
+          metaDescription = `SSC বোর্ড চ্যালেঞ্জ প্রতি বিষয়ের সরকারি বোর্ড ফি (৳${settings.officialBoardFee || 150}), SMS প্রসেসিং ফি (৳${settings.smsFeePerSubject || 6}) ও আবেদনী সার্ভিস চার্জের পূর্ণাঙ্গ স্বচ্ছ তালিকা।`;
           canonicalPath = '/pricing';
           break;
         case 'notice':

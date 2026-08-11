@@ -39,15 +39,6 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-xs transition-all">
-      {/* Top Banner Notice */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-emerald-600 text-white text-xs sm:text-sm py-2 px-4 text-center font-bold flex flex-wrap items-center justify-center gap-2 sm:gap-3.5 shadow-xs">
-        <span className="bg-amber-400 text-slate-950 px-2.5 py-0.5 rounded-full text-xs font-black shadow-xs tracking-wide">
-          ডিজিটাল বোর্ড চ্যালেঞ্জ সেবা
-        </span>
-        <span className="hidden sm:inline text-white/50">•</span>
-        <span className="truncate">{noticeText}</span>
-      </div>
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
