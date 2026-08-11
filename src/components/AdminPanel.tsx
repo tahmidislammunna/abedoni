@@ -41,6 +41,7 @@ import {
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
 import { InvoiceCard } from './InvoiceCard';
 import { NewOrderModal } from './NewOrderModal';
+import { handlePrintInvoice } from '../utils/printUtils';
 import { 
   BOARDS_LIST, 
   SSC_SUBJECTS,
@@ -48,6 +49,8 @@ import {
   replaceTemplateVars,
   generateWhatsappInvoiceMessage,
   generateWhatsappReceiptMessage,
+  getRawInvoiceTextMessage,
+  getRawReceiptTextMessage,
   getWhatsappDirectUrl
 } from '../data/boardsAndSubjects';
 import { getAppSettings, saveAppSettings, AppSettings, ModeratorUser } from '../data/appSettings';
@@ -87,6 +90,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   // Preview Invoice / Receipt Modal State
   const [previewInvoiceOrder, setPreviewInvoiceOrder] = useState<BoardChallengeOrder | null>(null);
   const [previewModalType, setPreviewModalType] = useState<'invoice' | 'receipt'>('invoice');
+  const [copiedModalText, setCopiedModalText] = useState<boolean>(false);
   
   // User Role
   const [adminRole] = useState<string>(() => {
@@ -2958,8 +2962,63 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
             </div>
 
             {/* Invoice Printable View Container (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 print:p-0 print:overflow-visible">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 print:p-0 print:overflow-visible">
               <InvoiceCard order={previewInvoiceOrder} type={previewModalType} settings={appSettings} />
+
+              {/* Auto Generated Text Message Box for Copying */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 print:hidden">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <span className="font-black text-slate-900 text-xs sm:text-sm flex items-center gap-1.5">
+                      <Copy className="w-4 h-4 text-blue-600" />
+                      <span>ইনভয়েস মেসেজ টেক্সট (কপি করার জন্য)</span>
+                    </span>
+                    <span className="text-[11px] text-slate-500 block">
+                      মেসেঞ্জার, মেসেজ বা ইমেইলে পাঠাতে টেক্সট আকারে কপি করুন:
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const rawText = previewModalType === 'invoice'
+                        ? getRawInvoiceTextMessage(previewInvoiceOrder)
+                        : getRawReceiptTextMessage(previewInvoiceOrder);
+                      navigator.clipboard.writeText(rawText);
+                      setCopiedModalText(true);
+                      setTimeout(() => setCopiedModalText(false), 2500);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs ${
+                      copiedModalText
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
+                  >
+                    {copiedModalText ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span>কপি হয়েছে!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>টেক্সট কপি করুন</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <textarea
+                  readOnly
+                  rows={9}
+                  value={
+                    previewModalType === 'invoice'
+                      ? getRawInvoiceTextMessage(previewInvoiceOrder)
+                      : getRawReceiptTextMessage(previewInvoiceOrder)
+                  }
+                  className="w-full bg-white border border-slate-200 rounded-xl p-3 font-mono text-xs text-slate-800 leading-relaxed focus:ring-2 focus:ring-blue-500/20 focus:outline-none select-all resize-y"
+                />
+              </div>
             </div>
 
             {/* Actions Bar (Footer Sticky) */}
@@ -2967,7 +3026,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
-                  onClick={() => window.print()}
+                  onClick={() => handlePrintInvoice('digital-receipt-printable')}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
                 >
                   <Printer className="w-4 h-4" />

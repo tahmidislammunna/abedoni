@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus } from '../types';
 import { InvoiceCard } from './InvoiceCard';
+import { handlePrintInvoice } from '../utils/printUtils';
 import { generateStudentWhatsappMessage, getWhatsappDirectUrl } from '../data/boardsAndSubjects';
 import { getAppSettings } from '../data/appSettings';
 
@@ -247,7 +248,7 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
             {/* Action Buttons below Receipt */}
             <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
               <button
-                onClick={() => window.print()}
+                onClick={() => handlePrintInvoice('digital-receipt-printable')}
                 className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-extrabold px-6 py-3.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
               >
                 <Printer className="w-4 h-4 text-emerald-400" />

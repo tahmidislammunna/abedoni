@@ -174,14 +174,14 @@ export function generateStudentWhatsappMessage(
 
 আমি Abedoni অনলাইন সহায়তা পোর্টালে তথ্য প্রদান করেছি।
 
-📌 **শিক্ষার্থী ও আবেদনের বিবরণী:**
-• **অর্ডার আইডি:** {orderId}
-• **শিক্ষার্থীর নাম:** {studentName}
-• **রোল নম্বর:** {rollNumber}
-• **রেজি নম্বর:** {regNumber}
-• **শিক্ষা বোর্ড:** {boardName}
-• **নির্বাচিত বিষয়:** {subjects}
-• **পরিশোধিত সার্ভিস ফি:** ৳{totalFee} ({paymentMethod}, TrxID: {trxId})
+📌 *শিক্ষার্থী ও আবেদনের বিবরণী:*
+• *অর্ডার আইডি:* {orderId}
+• *শিক্ষার্থীর নাম:* {studentName}
+• *রোল নম্বর:* {rollNumber}
+• *রেজি নম্বর:* {regNumber}
+• *শিক্ষা বোর্ড:* {boardName}
+• *নির্বাচিত বিষয়:* {subjects}
+• *পরিশোধিত সার্ভিস ফি:* ৳{totalFee} ({paymentMethod}, TrxID: {trxId})
 
 অনুগ্রহ করে আমার ফলাফল পুনঃনিরীক্ষণ (Board Challenge) আবেদনটি অনলাইন পোর্টালে সম্পন্ন করতে সহায়তা করুন। ধন্যবাদ!`;
 
@@ -189,9 +189,9 @@ export function generateStudentWhatsappMessage(
 }
 
 /**
- * Generate Admin-to-Student WhatsApp Invoice Message
+ * Get Raw Plain Text Invoice Message
  */
-export function generateWhatsappInvoiceMessage(order: any): string {
+export function getRawInvoiceTextMessage(order: any): string {
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const subjectsStr = Array.isArray(order.subjectNamesBn) && order.subjectNamesBn.length > 0
     ? order.subjectNamesBn.join(', ')
@@ -204,39 +204,37 @@ export function generateWhatsappInvoiceMessage(order: any): string {
   const platformFee = order.platformFee || 49;
   const totalFee = order.totalFee || (officialFee + platformFee);
 
-  const text = `🧾 **আবেদনী (Abedoni) - ডিজিটাল ইনভয়েস**
+  return `🧾 *আবেদনী (Abedoni) - ডিজিটাল ইনভয়েস*
 
-• **অর্ডার / লিড আইডি:** ${order.id}
-• **শিক্ষার্থীর নাম:** ${order.studentName || 'N/A'}
-• **শিক্ষা বোর্ড:** ${order.board || 'N/A'} Board
-• **রোল নম্বর:** ${order.roll || 'N/A'}
-• **রেজিস্ট্রেশন নম্বর:** ${order.reg || 'N/A'}
-• **মোবাইল নম্বর:** ${order.phone || 'N/A'}
-• **আবেদনকৃত বিষয়সমূহ:** ${subjectsStr}
+• *অর্ডার / লিড আইডি:* ${order.id}
+• *শিক্ষার্থীর নাম:* ${order.studentName || 'N/A'}
+• *শিক্ষা বোর্ড:* ${order.board || 'N/A'} Board
+• *রোল নম্বর:* ${order.roll || 'N/A'}
+• *রেজিস্ট্রেশন নম্বর:* ${order.reg || 'N/A'}
+• *মোবাইল নম্বর:* ${order.phone || 'N/A'}
+• *আবেদনকৃত বিষয়সমূহ:* ${subjectsStr}
 
-💰 **ফি বিবরণী:**
+💰 *ফি বিবরণী:*
 • সরকারি বোর্ড ফি (${numSubjects}টি বিষয়): ৳${officialFee}
 • আবেদনী অনলাইন সার্ভিস ফি: ৳${platformFee}
-• **সর্বমোট প্রদেয়/পরিশোধিত:** ৳${totalFee}
+• *সর্বমোট প্রদেয়/পরিশোধিত:* ৳${totalFee}
 
-💳 **পেমেন্ট তথ্য:**
+💳 *পেমেন্ট তথ্য:*
 • পেমেন্ট মাধ্যম: ${order.paymentMethod || 'bKash'}
 • ট্রানজেকশন আইডি (TrxID): ${order.trxId || 'N/A'}
 • পেমেন্ট স্ট্যাটাস: ${order.paymentStatus || 'Reviewing'}
 
-🔗 **আপনার লাইভ আবেদন ট্র্যাকিং লিঙ্ক:**
+🔗 *আপনার লাইভ আবেদন ট্র্যাকিং লিঙ্ক:*
 ${siteUrl}/tracking?id=${order.id}
 
 ধন্যবাদ!
 আবেদনী সাপোর্ট টিম`;
-
-  return encodeURIComponent(text);
 }
 
 /**
- * Generate Admin-to-Student WhatsApp Receipt Confirmation Message
+ * Get Raw Plain Text Receipt Message
  */
-export function generateWhatsappReceiptMessage(order: any): string {
+export function getRawReceiptTextMessage(order: any): string {
   const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
   const subjectsStr = Array.isArray(order.subjectNamesBn) && order.subjectNamesBn.length > 0
     ? order.subjectNamesBn.join(', ')
@@ -249,19 +247,19 @@ export function generateWhatsappReceiptMessage(order: any): string {
   const platformFee = order.platformFee || 49;
   const totalFee = order.totalFee || (officialFee + platformFee);
 
-  const text = `✅ **আবেদনী (Abedoni) - অফিসিয়াল মানি রিসিট**
+  return `✅ *আবেদনী (Abedoni) - অফিসিয়াল মানি রিসিট*
 
-• **রিসিট নং:** ${order.receiptId || `RCP-${order.id}`}
-• **অর্ডার আইডি:** ${order.id}
-• **শিক্ষার্থীর নাম:** ${order.studentName || 'N/A'}
-• **বোর্ড:** ${order.board || 'N/A'} | **রোল:** ${order.roll || 'N/A'} | **রেজি:** ${order.reg || 'N/A'}
-• **বিষয়সমূহ:** ${subjectsStr}
+• *রিসিট নং:* ${order.receiptId || `RCP-${order.id}`}
+• *অর্ডার আইডি:* ${order.id}
+• *শিক্ষার্থীর নাম:* ${order.studentName || 'N/A'}
+• *বোর্ড:* ${order.board || 'N/A'} | *রোল:* ${order.roll || 'N/A'} | *রেজি:* ${order.reg || 'N/A'}
+• *বিষয়সমূহ:* ${subjectsStr}
 
-💵 **পরিশোধের সারসংক্ষেপ:**
+💵 *পরিশোধের সারসংক্ষেপ:*
 • অফিশিয়াল সরকারি বোর্ড ফি: ৳${officialFee}
 • আবেদনী অনলাইন সহায়তা সার্ভিস ফি: ৳${platformFee}
-• **মোট প্রাপ্তি:** ৳${totalFee} (পরিশোধিত)
-• **ট্রানজেকশন আইডি:** ${order.trxId || 'N/A'} (${order.paymentMethod || 'Mobile Banking'})
+• *মোট প্রাপ্তি:* ৳${totalFee} (পরিশোধিত)
+• *ট্রানজেকশন আইডি:* ${order.trxId || 'N/A'} (${order.paymentMethod || 'Mobile Banking'})
 
 আপনার SSC 2026 বোর্ড চ্যালেঞ্জ আবেদনটি সফলভাবে চূড়ান্ত ও প্রসেসিং সম্পন্ন হয়েছে।
 
@@ -269,8 +267,20 @@ export function generateWhatsappReceiptMessage(order: any): string {
 ${siteUrl}/tracking?id=${order.id}
 
 ধন্যবাদ, আবেদনী টিম!`;
+}
 
-  return encodeURIComponent(text);
+/**
+ * Generate Admin-to-Student WhatsApp Invoice Message
+ */
+export function generateWhatsappInvoiceMessage(order: any): string {
+  return encodeURIComponent(getRawInvoiceTextMessage(order));
+}
+
+/**
+ * Generate Admin-to-Student WhatsApp Receipt Confirmation Message
+ */
+export function generateWhatsappReceiptMessage(order: any): string {
+  return encodeURIComponent(getRawReceiptTextMessage(order));
 }
 
 /**
