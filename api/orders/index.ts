@@ -35,6 +35,7 @@ export interface BoardChallengeOrder {
   receiptId: string;
   createdAt: string;
   updatedAt: string;
+  isFinalized?: boolean;
   studentName: string;
   fatherName: string;
   motherName?: string;
@@ -78,8 +79,8 @@ const BOARDS_LIST = [
   { code: 'TEC', codeSms: 'TEC' },
 ];
 
-const OFFICIAL_FEE_PER_SUBJECT = 175;
-const ABEDONI_PLATFORM_FEE_PER_ORDER = 100;
+const OFFICIAL_FEE_PER_SUBJECT = 150;
+const ABEDONI_PLATFORM_FEE_PER_ORDER = 49;
 
 const SSC_SUBJECTS = [
   { code: '101', nameBn: 'বাংলা (Bangla First & Second)' },
@@ -104,12 +105,6 @@ const SSC_SUBJECTS = [
   { code: '151', nameBn: 'গার্হস্থ্য বিজ্ঞান (Home Science)' },
 ];
 
-function generateFirstSmsCommand(board: string, roll: string, subjectCodes: string[]): string {
-  const boardSmsCode = BOARDS_LIST.find(b => b.code === board)?.codeSms || board;
-  const codesStr = subjectCodes.join(',');
-  return `RSC ${boardSmsCode} ${roll.trim()} ${codesStr}`;
-}
-
 function dbRowToOrder(row: any): BoardChallengeOrder {
   let subjectsArr: string[] = [];
   if (Array.isArray(row.subjects)) {
@@ -127,30 +122,31 @@ function dbRowToOrder(row: any): BoardChallengeOrder {
 
   return {
     id: row.id,
-    receiptId: row.receipt_id,
+    receiptId: row.receipt_id || `RCP-${row.id.replace(/\D/g, '')}`,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    studentName: row.student_name,
+    isFinalized: Boolean(row.is_finalized || row.order_status === 'Finalized' || row.order_status === 'Completed'),
+    studentName: row.student_name || 'পেন্ডিং লিড',
     fatherName: row.father_name || '',
     motherName: row.mother_name || '',
-    roll: row.roll,
-    reg: row.reg,
-    board: row.board,
+    roll: row.roll || '',
+    reg: row.reg || '',
+    board: row.board || 'DHA',
     exam: row.exam || 'SSC',
     year: Number(row.year || 2026),
-    phone: row.phone,
-    whatsapp: row.whatsapp || row.phone,
+    phone: row.phone || '',
+    whatsapp: row.whatsapp || row.phone || '',
     email: row.email || '',
     subjects: subjectsArr,
     subjectNamesBn: subjectNamesBnArr,
-    officialFee: Number(row.official_fee || 0),
-    platformFee: Number(row.platform_fee || 0),
-    totalFee: Number(row.total_fee || 0),
+    officialFee: Number(row.official_fee || (subjectsArr.length * 150)),
+    platformFee: Number(row.platform_fee || 49),
+    totalFee: Number(row.total_fee || (subjectsArr.length * 150 + 49)),
     paymentMethod: row.payment_method || 'bKash',
-    paymentSenderPhone: row.payment_sender_phone || row.phone,
-    trxId: row.trx_id,
-    paymentStatus: row.payment_status || 'Reviewing',
-    orderStatus: row.order_status || 'Pending',
+    paymentSenderPhone: row.payment_sender_phone || row.phone || '',
+    trxId: row.trx_id || 'PENDING_TRX',
+    paymentStatus: row.payment_status || 'Pending',
+    orderStatus: row.order_status || 'Pending Lead',
     adminNotes: row.admin_notes || '',
     teletalkSmsCommand1: row.teletalk_sms_command1 || '',
     boardReply1: row.board_reply1 || '',
@@ -166,6 +162,7 @@ function orderToDbRow(order: Partial<BoardChallengeOrder>): Record<string, any> 
   if (order.receiptId !== undefined) row.receipt_id = order.receiptId;
   if (order.createdAt !== undefined) row.created_at = order.createdAt;
   if (order.updatedAt !== undefined) row.updated_at = order.updatedAt;
+  if (order.isFinalized !== undefined) row.is_finalized = order.isFinalized;
   if (order.studentName !== undefined) row.student_name = order.studentName;
   if (order.fatherName !== undefined) row.father_name = order.fatherName;
   if (order.motherName !== undefined) row.mother_name = order.motherName;
@@ -197,6 +194,7 @@ function orderToDbRow(order: Partial<BoardChallengeOrder>): Record<string, any> 
 }
 
 const mapSubjectNames = (codes: string[]): string[] => {
+  if (!Array.isArray(codes)) return [];
   return codes.map(code => {
     const match = SSC_SUBJECTS.find(s => s.code === code);
     return match ? match.nameBn : `বিষয় কোড: ${code}`;
@@ -231,11 +229,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           result = result.filter(o => 
             o.id.toLowerCase().includes(q) ||
             o.receiptId.toLowerCase().includes(q) ||
-            o.roll.includes(q) ||
-            o.reg.includes(q) ||
-            o.phone.includes(q) ||
-            o.studentName.toLowerCase().includes(q) ||
-            o.trxId.toLowerCase().includes(q)
+            (o.roll && o.roll.includes(q)) ||
+            (o.reg && o.reg.includes(q)) ||
+            (o.phone && o.phone.includes(q)) ||
+            (o.studentName && o.studentName.toLowerCase().includes(q)) ||
+            (o.trxId && o.trxId.toLowerCase().includes(q))
           );
         }
 
@@ -250,55 +248,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json([]);
   }
 
-  // POST /api/orders (Create Order)
+  // POST /api/orders (Create Lead or Full Order)
   if (req.method === 'POST') {
     try {
       const body = req.body || {};
       
-      if (!body.studentName || !body.roll || !body.reg || !body.board || !body.phone || !body.subjects || body.subjects.length === 0) {
-        return res.status(400).json({ error: 'সকল প্রয়োজনীয় ফিল্ড পূরণ করুন।' });
+      if (!body.phone && !body.roll) {
+        return res.status(400).json({ error: 'অন্তত মোবাইল নম্বর প্রদান করুন।' });
       }
 
       const randomSuffix = Math.floor(10000 + Math.random() * 90000).toString();
-      const orderId = `ABD-2026-${randomSuffix}`;
+      const orderId = body.id || `ABD-2026-${randomSuffix}`;
       const receiptId = `RCP-${randomSuffix}`;
       const now = new Date().toISOString();
 
-      const numSubjects = body.subjects.length;
-      const officialFee = numSubjects * OFFICIAL_FEE_PER_SUBJECT;
-      const platformFee = ABEDONI_PLATFORM_FEE_PER_ORDER;
-      const totalFee = officialFee + platformFee;
+      const subjectsList = Array.isArray(body.subjects) ? body.subjects : [];
+      const numSubjects = subjectsList.length;
+      const officialFee = body.officialFee || (numSubjects * OFFICIAL_FEE_PER_SUBJECT);
+      const platformFee = body.platformFee || ABEDONI_PLATFORM_FEE_PER_ORDER;
+      const totalFee = body.totalFee || (officialFee + platformFee);
 
-      const smsCmd1 = generateFirstSmsCommand(body.board, body.roll, body.subjects);
+      const isLead = Boolean(!body.studentName || !body.roll || !body.reg || body.isLead || body.orderStatus === 'Pending Lead');
 
       const newOrder: BoardChallengeOrder = {
         id: orderId,
         receiptId: receiptId,
         createdAt: now,
         updatedAt: now,
-        studentName: body.studentName.trim(),
+        isFinalized: Boolean(body.isFinalized || (!isLead && body.orderStatus === 'Finalized')),
+        studentName: body.studentName ? body.studentName.trim() : 'পেন্ডিং লিড (হোয়াটসঅ্যাপ)',
         fatherName: body.fatherName ? body.fatherName.trim() : '',
         motherName: body.motherName ? body.motherName.trim() : '',
-        roll: body.roll.trim(),
-        reg: body.reg.trim(),
-        board: body.board,
+        roll: body.roll ? body.roll.trim() : '',
+        reg: body.reg ? body.reg.trim() : '',
+        board: body.board || 'DHA',
         exam: body.exam || 'SSC',
         year: 2026,
-        phone: body.phone.trim(),
-        whatsapp: body.whatsapp ? body.whatsapp.trim() : body.phone.trim(),
+        phone: body.phone ? body.phone.trim() : '',
+        whatsapp: body.whatsapp ? body.whatsapp.trim() : (body.phone ? body.phone.trim() : ''),
         email: body.email ? body.email.trim() : '',
-        subjects: body.subjects,
-        subjectNamesBn: mapSubjectNames(body.subjects),
+        subjects: subjectsList,
+        subjectNamesBn: body.subjectNamesBn || mapSubjectNames(subjectsList),
         officialFee,
         platformFee,
         totalFee,
         paymentMethod: body.paymentMethod || 'bKash',
-        paymentSenderPhone: body.paymentSenderPhone ? body.paymentSenderPhone.trim() : body.phone.trim(),
+        paymentSenderPhone: body.paymentSenderPhone ? body.paymentSenderPhone.trim() : (body.phone ? body.phone.trim() : ''),
         trxId: body.trxId ? body.trxId.trim().toUpperCase() : 'PENDING_TRX',
-        paymentStatus: 'Reviewing',
-        orderStatus: 'Pending',
-        teletalkSmsCommand1: smsCmd1,
-        adminNotes: 'নতুন আবেদন সাবমিট হয়েছে। Written Reviewing by Abedoni',
+        paymentStatus: body.paymentStatus || (isLead ? 'Pending' : 'Reviewing'),
+        orderStatus: body.orderStatus || (isLead ? 'Pending Lead' : 'Pending'),
+        adminNotes: body.adminNotes || (isLead ? 'ওয়েবসাইট থেকে লিড জমা হয়েছে। হোয়াটসঅ্যাপে যোগাযোগের অপেক্ষায়।' : 'নতুন আবেদন সাবমিট হয়েছে।'),
       };
 
       const dbRow = orderToDbRow(newOrder);
@@ -311,7 +310,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       return res.status(201).json({
         success: true,
-        message: 'আবেদন সফলভাবে গৃহীত হয়েছে!',
+        message: isLead ? 'লিড তথ্য সফলভাবে গৃহীত হয়েছে!' : 'আবেদন সফলভাবে গৃহীত হয়েছে!',
         order: newOrder,
       });
     } catch (err) {

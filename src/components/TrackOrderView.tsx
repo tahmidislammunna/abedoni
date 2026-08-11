@@ -12,6 +12,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus } from '../types';
+import { InvoiceCard } from './InvoiceCard';
 import { generateStudentWhatsappMessage, getWhatsappDirectUrl } from '../data/boardsAndSubjects';
 import { getAppSettings } from '../data/appSettings';
 
@@ -239,120 +240,12 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
             )}
           </div>
 
-          {/* Printable Digital Receipt Card */}
-          <div id="digital-receipt-printable" className="bg-white border-2 border-slate-300 p-6 sm:p-8 rounded-[32px] space-y-6 shadow-xl relative overflow-hidden">
-            
-            {/* Background Watermark/Badge */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none opacity-5">
-              <img src={settings.logoIconUrl} alt="Watermark" className="w-72 h-72 object-contain" />
-            </div>
+          {/* Printable Digital Receipt Card Container */}
+          <div className="space-y-4">
+            <InvoiceCard order={order} type="receipt" settings={settings} />
 
-            {/* Receipt Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b-2 border-slate-200 pb-5">
-              <div className="flex items-center gap-3">
-                <img src={settings.logoIconUrl} alt="Abedoni Logo" className="w-12 h-12 object-contain" />
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-blue-800 text-2xl sm:text-3xl">আবেদনী</span>
-                    <span className="text-xs bg-blue-100 text-blue-900 border border-blue-200 font-extrabold px-2.5 py-1 rounded-md uppercase tracking-wider">
-                      Digital Receipt
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 font-semibold">SSC Board Challenge Service Portal • 2026</p>
-                </div>
-              </div>
-              <div className="text-left sm:text-right bg-slate-50 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none w-full sm:w-auto border sm:border-0 border-slate-200">
-                <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Order Reference ID</span>
-                <span className="text-lg font-mono font-black text-slate-900 block">
-                  {order.id}
-                </span>
-                <span className="text-xs text-slate-500 font-semibold block">
-                  ইস্যু তারিখ: {new Date(order.createdAt).toLocaleDateString('bn-BD', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </span>
-              </div>
-            </div>
-
-            {/* Student Specs Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs sm:text-sm bg-slate-50/80 p-4 sm:p-5 rounded-2xl border border-slate-200">
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">শিক্ষার্থীর নাম</span>
-                <span className="font-black text-slate-900 text-sm">{order.studentName}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">শিক্ষা বোর্ড</span>
-                <span className="font-black text-blue-800 text-sm">{order.board} Board</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">রোল নম্বর</span>
-                <span className="font-black font-mono text-slate-900 text-sm">{order.roll}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">রেজিস্ট্রেশন নম্বর</span>
-                <span className="font-black font-mono text-slate-900 text-sm">{order.reg}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">মোবাইল নম্বর</span>
-                <span className="font-black font-mono text-slate-900 text-sm">{order.phone}</span>
-              </div>
-              <div>
-                <span className="text-slate-500 block font-semibold text-[11px]">বোর্ড চ্যালেঞ্জ স্ট্যাটাস</span>
-                <span className={`inline-block font-extrabold px-2.5 py-0.5 rounded text-xs border ${
-                  isProblematic 
-                    ? 'bg-rose-100 text-rose-900 border-rose-300'
-                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
-                }`}>
-                  {order.orderStatus === 'Cancelled' ? 'বাতিলকৃত' : 'Processing by Abedoni'}
-                </span>
-              </div>
-            </div>
-
-            {/* Subjects List */}
-            <div className="space-y-2">
-              <span className="text-xs sm:text-sm font-extrabold text-slate-800 block">আবেদনকৃত বিষয়সমূহ (Challenge Subject List):</span>
-              <div className="flex flex-wrap gap-2">
-                {order.subjectNamesBn?.map((s, idx) => (
-                  <span key={idx} className="bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-bold text-blue-900 shadow-2xs">
-                    ✓ {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Financial Summary */}
-            <div className="bg-slate-900 text-white p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg border border-slate-800">
-              <div className="space-y-1">
-                <p className="text-slate-300 text-xs font-medium">
-                  পেমেন্ট মাধ্যম: <strong className="text-white font-bold">{order.paymentMethod}</strong> (প্রেরক: {order.paymentSenderPhone || order.phone})
-                </p>
-                <p className="text-slate-300 text-xs font-mono">
-                  Transaction ID (TrxID): <strong className="text-amber-300 font-extrabold">{order.trxId}</strong>
-                </p>
-                <p className={`text-xs font-black ${isProblematic ? 'text-rose-400' : order.paymentStatus === 'Paid' ? 'text-emerald-400' : 'text-amber-300'}`}>
-                  পেমেন্ট যাচাই: {
-                    isProblematic ? 'সমস্যা পাওয়া গেছে (Payment Issue)' :
-                    order.paymentStatus === 'Paid' ? 'পরিশোধিত (Paid & Verified)' : 
-                    'যাচাইাধীন (Reviewing)'
-                  }
-                </p>
-              </div>
-              <div className="text-left sm:text-right border-t sm:border-t-0 sm:border-l border-slate-800 pt-3 sm:pt-0 sm:pl-6 w-full sm:w-auto">
-                <span className="text-slate-400 block text-xs font-bold uppercase tracking-wider">সর্বমোট পরিশোধিত ফি</span>
-                <span className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono">৳{order.totalFee}</span>
-              </div>
-            </div>
-
-            {/* Receipt Footer Official Note */}
-            <div className="border-t border-slate-200 pt-3 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
-              <p className="font-semibold">
-                স্বচ্ছতা ও নিশ্চয়তার সাথে আপনার আবেদন টেলিটক অফিশিয়াল পোর্টালে প্রসেস করা হচ্ছে।
-              </p>
-              <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                Abedoni Verified Digital Seal
-              </span>
-            </div>
-
-            {/* Action Buttons inside/below Receipt */}
-            <div className="pt-2 no-print flex flex-col sm:flex-row items-center justify-between gap-3">
+            {/* Action Buttons below Receipt */}
+            <div className="no-print flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
               <button
                 onClick={() => window.print()}
                 className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white font-extrabold px-6 py-3.5 rounded-2xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
@@ -371,7 +264,6 @@ export const TrackOrderView: React.FC<TrackOrderViewProps> = ({
                 <span>WhatsApp সাপোর্ট ({settings.whatsappNumber})</span>
               </a>
             </div>
-
           </div>
 
         </div>

@@ -71,7 +71,7 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
     });
   };
 
-  const handleAssistedWhatsAppTrigger = (e: React.FormEvent) => {
+  const handleAssistedWhatsAppTrigger = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -84,12 +84,46 @@ export const BoardChallengeForm: React.FC<BoardChallengeFormProps> = ({
     const boardName = boardObj ? boardObj.nameBn : board;
     const subjectNames = getSelectedSubjectNames(selectedSubjectCodes);
 
+    const totalAmt = selectedSubjectCodes.length > 0
+      ? (selectedSubjectCodes.length * boardFeePerSub) + platformFee
+      : 0;
+
+    let leadId = '';
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: phone.trim(),
+          board,
+          subjects: selectedSubjectCodes,
+          isLead: true,
+          orderStatus: 'Pending Lead',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        leadId = data.order?.id || '';
+      }
+    } catch (err) {
+      console.error('Failed to create lead record:', err);
+    }
+
     const encodedMsg = generateAssistanceRequestWhatsappMessage(
       phone,
       boardName,
-      subjectNames
+      subjectNames,
+      totalAmt
     );
-    const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', encodedMsg);
+
+    let finalEncodedMsg = encodedMsg;
+    if (leadId) {
+      const decoded = decodeURIComponent(encodedMsg);
+      const withLeadId = `${decoded}\n\n📌 **অর্ডার / লিড আইডি:** ${leadId}`;
+      finalEncodedMsg = encodeURIComponent(withLeadId);
+    }
+
+    const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', finalEncodedMsg);
     
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };

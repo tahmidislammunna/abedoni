@@ -35,6 +35,7 @@ export interface BoardChallengeOrder {
   receiptId: string;
   createdAt: string;
   updatedAt: string;
+  isFinalized?: boolean;
   studentName: string;
   fatherName: string;
   motherName?: string;
@@ -85,30 +86,31 @@ function dbRowToOrder(row: any): BoardChallengeOrder {
 
   return {
     id: row.id,
-    receiptId: row.receipt_id,
+    receiptId: row.receipt_id || `RCP-${row.id.replace(/\D/g, '')}`,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    studentName: row.student_name,
+    isFinalized: Boolean(row.is_finalized || row.order_status === 'Finalized' || row.order_status === 'Completed'),
+    studentName: row.student_name || 'পেন্ডিং লিড',
     fatherName: row.father_name || '',
     motherName: row.mother_name || '',
-    roll: row.roll,
-    reg: row.reg,
-    board: row.board,
+    roll: row.roll || '',
+    reg: row.reg || '',
+    board: row.board || 'DHA',
     exam: row.exam || 'SSC',
     year: Number(row.year || 2026),
-    phone: row.phone,
-    whatsapp: row.whatsapp || row.phone,
+    phone: row.phone || '',
+    whatsapp: row.whatsapp || row.phone || '',
     email: row.email || '',
     subjects: subjectsArr,
     subjectNamesBn: subjectNamesBnArr,
-    officialFee: Number(row.official_fee || 0),
-    platformFee: Number(row.platform_fee || 0),
-    totalFee: Number(row.total_fee || 0),
+    officialFee: Number(row.official_fee || (subjectsArr.length * 150)),
+    platformFee: Number(row.platform_fee || 49),
+    totalFee: Number(row.total_fee || (subjectsArr.length * 150 + 49)),
     paymentMethod: row.payment_method || 'bKash',
-    paymentSenderPhone: row.payment_sender_phone || row.phone,
-    trxId: row.trx_id,
-    paymentStatus: row.payment_status || 'Reviewing',
-    orderStatus: row.order_status || 'Pending',
+    paymentSenderPhone: row.payment_sender_phone || row.phone || '',
+    trxId: row.trx_id || 'PENDING_TRX',
+    paymentStatus: row.payment_status || 'Pending',
+    orderStatus: row.order_status || 'Pending Lead',
     adminNotes: row.admin_notes || '',
     teletalkSmsCommand1: row.teletalk_sms_command1 || '',
     boardReply1: row.board_reply1 || '',
@@ -124,6 +126,7 @@ function orderToDbRow(order: Partial<BoardChallengeOrder>): Record<string, any> 
   if (order.receiptId !== undefined) row.receipt_id = order.receiptId;
   if (order.createdAt !== undefined) row.created_at = order.createdAt;
   if (order.updatedAt !== undefined) row.updated_at = order.updatedAt;
+  if (order.isFinalized !== undefined) row.is_finalized = order.isFinalized;
   if (order.studentName !== undefined) row.student_name = order.studentName;
   if (order.fatherName !== undefined) row.father_name = order.fatherName;
   if (order.motherName !== undefined) row.mother_name = order.motherName;
@@ -186,6 +189,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { 
       orderStatus, 
       paymentStatus, 
+      isFinalized,
       teletalkPin, 
       boardReply1, 
       adminNotes,
@@ -201,6 +205,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       paymentSenderPhone,
       paymentMethod,
       totalFee,
+      officialFee,
+      platformFee,
       subjects,
       subjectNamesBn
     } = req.body || {};
@@ -220,27 +226,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const finalReg = reg !== undefined ? reg : currentOrder.reg;
       const finalSubjects = subjects !== undefined ? subjects : currentOrder.subjects;
 
-      let updatedSmsCmd2 = currentOrder.teletalkSmsCommand2;
-      if (finalPin && finalPin.trim() !== '') {
-        updatedSmsCmd2 = generateSecondSmsCommand(finalPin.trim(), finalPhone);
-      }
-
-      // Generate updated first SMS command if board, roll, reg, or subjects change
-      let updatedSmsCmd1 = currentOrder.teletalkSmsCommand1;
-      if (board !== undefined || roll !== undefined || reg !== undefined || subjects !== undefined) {
-        const subStr = finalSubjects.join(',');
-        updatedSmsCmd1 = `RSC ${finalBoard.trim().toUpperCase()} ${finalRoll.trim()} ${currentOrder.year || 2026} ${finalReg.trim()} ${subStr}`;
-      }
+      const finalIsFinalized = isFinalized !== undefined 
+        ? Boolean(isFinalized) 
+        : (orderStatus === 'Finalized' || orderStatus === 'Completed' ? true : currentOrder.isFinalized);
 
       const updatedOrder: BoardChallengeOrder = {
         ...currentOrder,
         updatedAt: new Date().toISOString(),
-        orderStatus: orderStatus || currentOrder.orderStatus,
+        isFinalized: finalIsFinalized,
+        orderStatus: orderStatus || (finalIsFinalized ? 'Finalized' : currentOrder.orderStatus),
         paymentStatus: paymentStatus || currentOrder.paymentStatus,
         teletalkPin: finalPin,
         boardReply1: boardReply1 !== undefined ? boardReply1 : currentOrder.boardReply1,
-        teletalkSmsCommand1: updatedSmsCmd1,
-        teletalkSmsCommand2: updatedSmsCmd2,
         adminNotes: adminNotes !== undefined ? adminNotes : currentOrder.adminNotes,
         studentName: studentName !== undefined ? studentName : currentOrder.studentName,
         fatherName: fatherName !== undefined ? fatherName : currentOrder.fatherName,
@@ -253,6 +250,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         trxId: trxId !== undefined ? trxId : currentOrder.trxId,
         paymentSenderPhone: paymentSenderPhone !== undefined ? paymentSenderPhone : currentOrder.paymentSenderPhone,
         paymentMethod: paymentMethod !== undefined ? paymentMethod : currentOrder.paymentMethod,
+        officialFee: officialFee !== undefined ? Number(officialFee) : currentOrder.officialFee,
+        platformFee: platformFee !== undefined ? Number(platformFee) : currentOrder.platformFee,
         totalFee: totalFee !== undefined ? Number(totalFee) : currentOrder.totalFee,
         subjects: finalSubjects,
         subjectNamesBn: subjectNamesBn !== undefined ? subjectNamesBn : currentOrder.subjectNamesBn,

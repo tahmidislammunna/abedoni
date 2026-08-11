@@ -19,7 +19,6 @@ import {
   CheckCircle,
   ArrowLeft,
   FileText,
-  Smartphone,
   ExternalLink,
   Printer,
   AlertTriangle,
@@ -36,10 +35,19 @@ import {
   UserPlus,
   Edit,
   QrCode,
-  X
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { BoardChallengeOrder, OrderStatus, EducationBoard } from '../types';
-import { BOARDS_LIST, generateFirstSmsCommand, generateSecondSmsCommand, replaceTemplateVars } from '../data/boardsAndSubjects';
+import { InvoiceCard } from './InvoiceCard';
+import { NewOrderModal } from './NewOrderModal';
+import { 
+  BOARDS_LIST, 
+  replaceTemplateVars,
+  generateWhatsappInvoiceMessage,
+  generateWhatsappReceiptMessage,
+  getWhatsappDirectUrl
+} from '../data/boardsAndSubjects';
 import { getAppSettings, saveAppSettings, AppSettings, ModeratorUser } from '../data/appSettings';
 import { supabase } from '../lib/supabase';
 
@@ -57,6 +65,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [boardFilter, setBoardFilter] = useState<string>('ALL');
+  
+  // Lead / Order Filter Sub-Tab
+  const [leadFilterTab, setLeadFilterTab] = useState<'ALL' | 'LEADS' | 'FINALIZED'>('ALL');
+
+  // New Order Modal State
+  const [isNewOrderModalOpen, setIsNewOrderModalOpen] = useState<boolean>(false);
+
+  // Preview Invoice / Receipt Modal State
+  const [previewInvoiceOrder, setPreviewInvoiceOrder] = useState<BoardChallengeOrder | null>(null);
+  const [previewModalType, setPreviewModalType] = useState<'invoice' | 'receipt'>('invoice');
   
   // User Role
   const [adminRole] = useState<string>(() => {
@@ -113,33 +131,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
   // Single Dedicated Order Page State
   const [selectedOrder, setSelectedOrder] = useState<BoardChallengeOrder | null>(null);
-  const [inputPin, setInputPin] = useState<string>('');
-  const [boardReply1Input, setBoardReply1Input] = useState<string>('');
   const [adminNoteInput, setAdminNoteInput] = useState<string>('');
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
-
-  // Auto-Extract Teletalk PIN from SMS
-  const extractPinFromSms = (text: string): string | null => {
-    if (!text) return null;
-    const pinMatch = text.match(/(?:PIN|Pin|pin)\s*[:=.-]?\s*([0-9]{5,12})/i);
-    if (pinMatch && pinMatch[1]) {
-      return pinMatch[1];
-    }
-    const numberMatch = text.match(/\b([0-9]{6,10})\b/);
-    if (numberMatch && numberMatch[1]) {
-      return numberMatch[1];
-    }
-    return null;
-  };
-
-  const handleBoardReply1Change = (text: string) => {
-    setBoardReply1Input(text);
-    const pin = extractPinFromSms(text);
-    if (pin) {
-      setInputPin(pin);
-    }
-  };
 
   // Status Change Confirmation Modal State
   const [confirmModalData, setConfirmModalData] = useState<{
@@ -147,8 +141,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
     orderId: string;
     targetStatus: OrderStatus;
     targetPaymentStatus: string;
-    pin?: string;
-    boardReply1?: string;
     note?: string;
   } | null>(null);
 
@@ -266,10 +258,61 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
     }
   };
 
+  const handleFinalizeOrder = async (orderToFinalize: BoardChallengeOrder, customData?: typeof editForm) => {
+    setIsSavingEdit(true);
+    const parsedSubjects = customData 
+      ? customData.subjects.split(',').map(s => s.trim()).filter(Boolean)
+      : orderToFinalize.subjects || [];
+
+    const payload = {
+      isFinalized: true,
+      orderStatus: 'Finalized' as OrderStatus,
+      paymentStatus: 'Paid',
+      studentName: customData?.studentName || orderToFinalize.studentName || 'শিক্ষার্থী',
+      roll: customData?.roll || orderToFinalize.roll || '',
+      reg: customData?.reg || orderToFinalize.reg || '',
+      board: customData?.board || orderToFinalize.board || 'DHA',
+      phone: customData?.phone || orderToFinalize.phone || '',
+      whatsapp: customData?.whatsapp || orderToFinalize.whatsapp || customData?.phone || orderToFinalize.phone || '',
+      fatherName: customData?.fatherName || orderToFinalize.fatherName || '',
+      motherName: customData?.motherName || orderToFinalize.motherName || '',
+      trxId: customData?.trxId || orderToFinalize.trxId || 'OFFICIAL-PAID',
+      paymentSenderPhone: customData?.paymentSenderPhone || orderToFinalize.paymentSenderPhone || customData?.phone || orderToFinalize.phone || '',
+      paymentMethod: customData?.paymentMethod || orderToFinalize.paymentMethod || 'bKash',
+      totalFee: customData?.totalFee || orderToFinalize.totalFee || (parsedSubjects.length * 150 + 49),
+      subjects: parsedSubjects,
+    };
+
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`/api/orders/${orderToFinalize.id}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const updated = data.order || { ...orderToFinalize, ...payload };
+        setOrders(prev => prev.map(o => o.id === orderToFinalize.id ? updated : o));
+        if (selectedOrder?.id === orderToFinalize.id) {
+          setSelectedOrder(updated);
+        }
+        setEditingOrder(null);
+        setPreviewInvoiceOrder(updated);
+        setPreviewModalType('invoice');
+      } else {
+        alert('ফাইনাল অর্ডার করতে সমস্যা হয়েছে!');
+      }
+    } catch (err) {
+      alert('নেটওয়ার্ক এরর! আবার চেষ্টা করুন।');
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedOrder) {
-      setInputPin(selectedOrder.teletalkPin || '');
-      setBoardReply1Input(selectedOrder.boardReply1 || '');
       setAdminNoteInput(selectedOrder.adminNotes || '');
     }
   }, [selectedOrder?.id]);
@@ -405,10 +448,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
   const handleUpdateOrderStatus = async (
     orderId: string, 
     newStatus: OrderStatus, 
-    pin?: string, 
     note?: string,
-    paymentStat: string = 'Paid',
-    boardReply1?: string
+    paymentStat: string = 'Paid'
   ) => {
     setIsUpdating(true);
     try {
@@ -419,8 +460,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
         body: JSON.stringify({
           orderStatus: newStatus,
           paymentStatus: paymentStat,
-          teletalkPin: pin,
-          boardReply1: boardReply1,
           adminNotes: note || 'Written Processing by Abedoni',
         }),
       });
@@ -444,8 +483,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
     orderId: string,
     targetStatus: OrderStatus,
     targetPaymentStatus: string = 'Paid',
-    pin?: string,
-    boardReply1?: string,
     note?: string
   ) => {
     setConfirmModalData({
@@ -453,14 +490,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
       orderId,
       targetStatus,
       targetPaymentStatus,
-      pin,
-      boardReply1,
       note,
     });
   };
 
   // WhatsApp One-Click Message Generator for every single step
-  const getStepWhatsappUrl = (order: BoardChallengeOrder, step: 'received' | 'processing' | 'pin' | 'completed' | 'issue') => {
+  const getStepWhatsappUrl = (order: BoardChallengeOrder, step: 'received' | 'processing' | 'completed' | 'issue') => {
     const studentPhone = order.whatsapp || order.phone;
     const cleanPhone = studentPhone.replace(/\D/g, '');
     const phoneWithCountry = cleanPhone.startsWith('88') ? cleanPhone : `88${cleanPhone}`;
@@ -475,7 +510,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
       totalFee: order.totalFee,
       trxId: order.trxId,
       paymentMethod: order.paymentMethod,
-      teletalkPin: order.teletalkPin || inputPin || 'N/A',
       siteUrl: siteUrl,
       subjects: order.subjectNamesBn ? order.subjectNamesBn.join(', ') : order.subjects.join(', '),
     };
@@ -484,9 +518,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
     if (step === 'received') {
       template = appSettings.whatsappTemplateReceived || `প্রিয় {studentName}, আবেদনী (Abedoni)-তে আপনার {boardName} বোর্ডের SSC বোর্ড চ্যালেঞ্জ ফি (৳{totalFee}) সফলভাবে প্রাপ্ত হয়েছে। Order ID: {orderId}। ট্র্যাকিং লিংক: {siteUrl}`;
     } else if (step === 'processing') {
-      template = appSettings.whatsappTemplateProcessing || `প্রিয় {studentName}, আপনার বোর্ড চ্যালেঞ্জ আবেদনটি (ID: {orderId}, Roll: {rollNumber}) সফলভাবে প্রসেসিংয়ে রয়েছে (Written Processing by Abedoni)। কোনো চিন্তা নেই, খুব দ্রুতই টেলিটকে জমা দেওয়া হবে।`;
-    } else if (step === 'pin') {
-      template = appSettings.whatsappTemplatePin || `প্রিয় {studentName}, আপনার আবেদনী আবেদনের ১ম ধাপ টেলিটক সার্ভারে সাবমিট করা হয়েছে। TeleTalk PIN: {teletalkPin}। ২য় কনফার্মেশন চূড়ান্ত করা হচ্ছে।`;
+      template = appSettings.whatsappTemplateProcessing || `প্রিয় {studentName}, আপনার বোর্ড চ্যালেঞ্জ আবেদনটি (ID: {orderId}, Roll: {rollNumber}) সফলভাবে প্রসেসিংয়ে রয়েছে (Written Processing by Abedoni)।`;
     } else if (step === 'completed') {
       template = appSettings.whatsappTemplateCompleted || `অভিনন্দন {studentName}! আপনার SSC বোর্ড চ্যালেঞ্জ আবেদনটি সফলভাবে শিক্ষা বোর্ডে জমা হয়েছে। Order ID: {orderId}। আপনার অনলাইন ডিজিটাল ট্র্যাকিং রসিদ দেখতে ভিজিট করুন: {siteUrl}`;
     } else if (step === 'issue') {
@@ -517,6 +549,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
         {/* Tab Switcher & Logout */}
         <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar shrink-0">
+          <button
+            onClick={() => setIsNewOrderModalOpen(true)}
+            className="px-3 py-1.5 rounded-lg text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>+ New Order</span>
+          </button>
+
           <button
             onClick={() => { setActiveTab('orders'); setSelectedOrder(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shrink-0 ${
@@ -611,7 +651,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
           {/* Main 2-Column Single Order Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* Left 2 Columns: Student Profile & SMS Command Generators */}
+            {/* Left Column: Student Profile */}
             <div className="lg:col-span-2 space-y-6">
               
               {/* Student Application Summary */}
@@ -688,151 +728,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 </div>
               </div>
 
-              {/* Readymade Teletalk SMS Commands Generator */}
-              <div className="bg-slate-900/95 backdrop-blur-2xl text-white p-6 sm:p-8 rounded-[32px] border border-slate-800 shadow-2xl space-y-6">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Smartphone className="w-5 h-5 text-emerald-400" />
-                    <span>টেলিটক সিম রেডিমেড SMS কমান্ড জেনারেটর</span>
-                  </h3>
-                  <span className="text-xs text-slate-400 font-mono">16222 SMS</span>
-                </div>
-
-                {/* Step 1 Command */}
-                <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-slate-300 font-bold">১ম এসএমএস কমান্ড (TeleTalk 1st Command):</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">Send to 16222</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      readOnly
-                      value={generateFirstSmsCommand(selectedOrder.board, selectedOrder.roll, selectedOrder.subjects)}
-                      className="w-full bg-slate-950 text-emerald-400 border border-slate-700 rounded-xl p-3 font-mono font-bold text-sm"
-                    />
-                    <button
-                      onClick={() => copyText(generateFirstSmsCommand(selectedOrder.board, selectedOrder.roll, selectedOrder.subjects), 'cmd1')}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-3 rounded-xl text-xs flex items-center gap-1.5 shrink-0 transition cursor-pointer"
-                    >
-                      {copiedCmd === 'cmd1' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                      <span>{copiedCmd === 'cmd1' ? 'কপি হয়েছে' : 'কপি করুন'}</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Board Reply 1 Storage Input */}
-                <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                  <div className="flex flex-wrap items-center justify-between gap-1">
-                    <label className="text-xs text-slate-300 font-bold block">
-                      শিক্ষা বোর্ড / টেলিটক থেকে ১ম কমান্ডের পর প্রাপ্ত ফিরতি SMS বা রিপ্লাই দিন:
-                    </label>
-                    {extractPinFromSms(boardReply1Input) && (
-                      <span className="text-[11px] font-bold text-emerald-400 bg-emerald-950/90 px-2.5 py-0.5 rounded-lg border border-emerald-700/80 flex items-center gap-1 animate-in fade-in">
-                        <span>✨ অটো-ডিটেক্ট করা পিন:</span>
-                        <strong className="font-mono text-white text-xs">{extractPinFromSms(boardReply1Input)}</strong>
-                      </span>
-                    )}
-                  </div>
-                  <textarea
-                    rows={2}
-                    placeholder="যেমন: You have requested for DHA Roll 142850 Sub 101,107. Total Tk 350 will be charged. PIN 84920153."
-                    value={boardReply1Input}
-                    onChange={e => handleBoardReply1Change(e.target.value)}
-                    className="w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3 font-mono text-xs focus:ring-2 focus:ring-emerald-500"
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                    <p className="text-[11px] text-slate-400">
-                      💡 টিপস: টেলিটক থেকে প্রাপ্ত ফিরতি SMS পেস্ট করলেই পিন অটো-ডিটেক্ট হয়ে নিচে বসে যাবে!
-                    </p>
-                    <button
-                      onClick={() => {
-                        handleUpdateOrderStatus(
-                          selectedOrder.id,
-                          selectedOrder.orderStatus,
-                          inputPin,
-                          adminNoteInput || selectedOrder.adminNotes,
-                          selectedOrder.paymentStatus,
-                          boardReply1Input
-                        );
-                      }}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 py-2 rounded-xl text-xs transition cursor-pointer flex items-center gap-1.5 shrink-0"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>বোর্ড রিপ্লাই মেসেজ সেভ করুন</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* PIN Input & Save to Confirm */}
-                <div className="space-y-2 bg-slate-800/80 p-4 rounded-2xl border border-slate-700">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-slate-300 font-bold block">
-                      টেলিটক ফেরত পিন নম্বর (1st SMS-এ প্রাপ্ত PIN):
-                    </label>
-                    {inputPin && (
-                      <span className="text-[11px] text-blue-400 font-mono font-bold">
-                        PIN: {inputPin}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="যেমন: 84920153"
-                      value={inputPin}
-                      onChange={e => setInputPin(e.target.value)}
-                      className="w-full bg-slate-950 text-white border border-slate-700 rounded-xl p-3 font-mono font-extrabold text-base focus:ring-2 focus:ring-emerald-500"
-                    />
-                    <button
-                      onClick={() => {
-                        requestStatusChangeWithConfirmation(
-                          selectedOrder.id,
-                          'SMS Sent',
-                          'Paid',
-                          inputPin,
-                          boardReply1Input,
-                          adminNoteInput || '১ম এসএমএস পাঠানো সম্পন্ন। পিন সেভ করা হয়েছে।'
-                        );
-                      }}
-                      className="bg-blue-600 hover:bg-blue-500 text-white font-extrabold px-5 py-3 rounded-xl text-xs shrink-0 transition cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
-                    >
-                      <CheckCircle className="w-4 h-4 text-blue-200" />
-                      <span>Pin Save to Confirm</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Step 2 Command */}
-                {inputPin && (
-                  <div className="space-y-2 bg-emerald-950/70 p-4 rounded-2xl border border-emerald-700/80 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-emerald-300 font-bold flex items-center gap-1.5">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                        <span>২য় এসএমএস কনফার্মেশন কমান্ড (TeleTalk 2nd Command):</span>
-                      </span>
-                      <span className="text-[10px] text-emerald-300 font-mono font-bold bg-emerald-900 px-2 py-0.5 rounded">Send to 16222</span>
-                    </div>
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                      <input
-                        type="text"
-                        readOnly
-                        value={generateSecondSmsCommand(inputPin, selectedOrder.phone)}
-                        className="w-full bg-slate-950 text-emerald-300 border border-emerald-700 rounded-xl p-3 font-mono font-black text-base tracking-wide"
-                      />
-                      <button
-                        onClick={() => copyText(generateSecondSmsCommand(inputPin, selectedOrder.phone), 'cmd2')}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-5 py-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shrink-0 transition cursor-pointer shadow-md"
-                      >
-                        {copiedCmd === 'cmd2' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                        <span>{copiedCmd === 'cmd2' ? 'কপি হয়েছে' : '২য় কমান্ড কপি করুন'}</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-              </div>
-
             </div>
 
             {/* Right Column: Status Manager & WhatsApp Step-by-Step API Triggers */}
@@ -871,8 +766,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                         selectedOrder.id,
                         newStat,
                         newStat === 'Pending' ? 'Reviewing' : 'Paid',
-                        inputPin,
-                        boardReply1Input,
                         adminNoteInput || `স্ট্যাটাস পরিবর্তন: ${newStat}`
                       );
                     }}
@@ -881,7 +774,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     <option value="Pending">1. Pending (যাচাইাধীন / Reviewing)</option>
                     <option value="Payment Verified">2. Payment Verified (পেমেন্ট কনফার্মড)</option>
                     <option value="Processing">3. Processing (Processing by Abedoni)</option>
-                    <option value="SMS Sent">4. SMS Sent (১ম টেলিটক এসএমএস প্রেরিত)</option>
+                    <option value="SMS Sent">4. SMS Sent</option>
                     <option value="Completed">5. Completed (আবেদন ১০০% সফলভাবে সম্পন্ন)</option>
                     <option value="Cancelled">6. Cancelled (বাতিল / পেমেন্ট ইস্যু)</option>
                   </select>
@@ -897,8 +790,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                         selectedOrder.id,
                         'Processing',
                         'Paid',
-                        inputPin,
-                        boardReply1Input,
                         'Written Processing by Abedoni'
                       );
                     }}
@@ -912,27 +803,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     onClick={() => {
                       requestStatusChangeWithConfirmation(
                         selectedOrder.id,
-                        'SMS Sent',
-                        'Paid',
-                        inputPin,
-                        boardReply1Input,
-                        '১ম এসএমএস পাঠানো সম্পন্ন। পিন কনফার্মেশন প্রসেস হচ্ছে।'
-                      );
-                    }}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold p-3 rounded-2xl text-xs flex items-center justify-between transition cursor-pointer shadow-sm"
-                  >
-                    <span>📩 Mark 1st TeleTalk SMS Sent</span>
-                    <span className="font-mono text-[10px]">SMS Sent</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      requestStatusChangeWithConfirmation(
-                        selectedOrder.id,
                         'Completed',
                         'Paid',
-                        inputPin,
-                        boardReply1Input,
                         'আবেদন ১০০% সফলভাবে শিক্ষা বোর্ডে জমা হয়েছে। রসিদ ডাউনলোডে প্রস্তুত।'
                       );
                     }}
@@ -948,8 +820,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                         selectedOrder.id,
                         'Cancelled',
                         'Unverified',
-                        inputPin,
-                        boardReply1Input,
                         'পেমেন্ট তথ্য পুনঃযাচাই করা প্রয়োজন।'
                       );
                     }}
@@ -971,8 +841,44 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   <span className="text-[10px] bg-emerald-800 text-emerald-200 px-2 py-0.5 rounded-full font-bold">API</span>
                 </div>
 
+                {/* Primary Quick WhatsApp Actions */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pb-3 border-b border-emerald-800">
+                  <a
+                    href={getWhatsappDirectUrl(selectedOrder.whatsapp || selectedOrder.phone, '')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-sm text-center"
+                    title="Open WhatsApp Chat"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>WhatsApp Chat</span>
+                  </a>
+
+                  <a
+                    href={getWhatsappDirectUrl(selectedOrder.whatsapp || selectedOrder.phone, generateWhatsappInvoiceMessage(selectedOrder))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center border border-emerald-700"
+                    title="Send Invoice on WhatsApp"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-300" />
+                    <span>Send Invoice</span>
+                  </a>
+
+                  <a
+                    href={getWhatsappDirectUrl(selectedOrder.whatsapp || selectedOrder.phone, generateWhatsappReceiptMessage(selectedOrder))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-bold p-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition text-center border border-emerald-700"
+                    title="Send Receipt on WhatsApp"
+                  >
+                    <CheckCircle className="w-4 h-4 text-emerald-300" />
+                    <span>Send Receipt</span>
+                  </a>
+                </div>
+
                 <p className="text-xs text-emerald-300 leading-relaxed">
-                  প্রতিটি ধাপে শিক্ষার্থীকে এক ক্লিকে সরাসরি হোয়াটসঅ্যাপে বার্তা প্রেরণ করতে পারবেন:
+                  ধাপ ভিত্তিক স্ট্যাটাস বার্তা এক ক্লিকে সরাসরি হোয়াটসঅ্যাপে প্রেরণ:
                 </p>
 
                 <div className="space-y-2">
@@ -997,22 +903,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   </a>
 
                   <a
-                    href={getStepWhatsappUrl(selectedOrder, 'pin')}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-2xl text-xs flex items-center justify-between transition shadow-sm"
-                  >
-                    <span>৩. ১ম এসএমএস সফল & পিন বার্তা</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-
-                  <a
                     href={getStepWhatsappUrl(selectedOrder, 'completed')}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold p-3 rounded-2xl text-xs flex items-center justify-between transition shadow-sm"
                   >
-                    <span>৪. ১০০% আবেদন সফল বার্তা</span>
+                    <span>৩. ১০০% আবেদন সফল বার্তা</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
 
@@ -1022,7 +918,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     rel="noopener noreferrer"
                     className="w-full bg-amber-600 hover:bg-amber-500 text-white font-bold p-3 rounded-2xl text-xs flex items-center justify-between transition shadow-sm"
                   >
-                    <span>৫. পেমেন্ট অসঙ্গতি / পুনঃযাচাই বার্তা</span>
+                    <span>৪. পেমেন্ট অসঙ্গতি / পুনঃযাচাই বার্তা</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 </div>
@@ -1175,6 +1071,58 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
         /* 3. ORDERS LIST TABLE VIEW */
         /* ------------------------------------------------------------- */
         <>
+          {/* Sub-Tab Filter Bar: Leads vs Finalized Orders */}
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+            <button
+              type="button"
+              onClick={() => setLeadFilterTab('ALL')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                leadFilterTab === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <span>📋 সকল আবেদন</span>
+              <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-mono text-[10px]">
+                {orders.length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadFilterTab('LEADS')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                leadFilterTab === 'LEADS'
+                  ? 'bg-amber-500 text-white shadow-xs'
+                  : 'text-amber-800 hover:text-amber-950 hover:bg-amber-50/50'
+              }`}
+            >
+              <span>📌 পেন্ডিং লিড</span>
+              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
+                leadFilterTab === 'LEADS' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-900'
+              }`}>
+                {orders.filter(o => !o.isFinalized && o.orderStatus !== 'Finalized').length}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLeadFilterTab('FINALIZED')}
+              className={`flex-1 py-2 px-3 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center justify-center gap-1.5 ${
+                leadFilterTab === 'FINALIZED'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50/50'
+              }`}
+            >
+              <span>✅ ফাইনাল অর্ডার</span>
+              <span className={`px-2 py-0.5 rounded-full font-mono text-[10px] ${
+                leadFilterTab === 'FINALIZED' ? 'bg-emerald-700 text-white' : 'bg-emerald-100 text-emerald-900'
+              }`}>
+                {orders.filter(o => o.isFinalized || o.orderStatus === 'Finalized').length}
+              </span>
+            </button>
+          </div>
+
           {/* Filters & Export Bar (Clean & Focused) */}
           <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
             <div className="relative flex-1 w-full">
@@ -1213,6 +1161,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
               <button
                 type="button"
+                onClick={() => setIsNewOrderModalOpen(true)}
+                className="col-span-2 sm:col-auto bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer shrink-0"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>+ New Order</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleExportCSV}
                 className="col-span-2 sm:col-auto bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer shrink-0"
               >
@@ -1224,17 +1181,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
 
           {/* Mobile Orders Card List (visible on mobile < md) */}
           <div className="block md:hidden space-y-3">
-            {orders.length === 0 ? (
+            {orders.filter(ord => {
+              if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
+              if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+              return true;
+            }).length === 0 ? (
               <div className="bg-white p-6 rounded-2xl text-center text-slate-500 font-bold border border-slate-200">
                 কোনো আবেদন পাওয়া যায়নি।
               </div>
             ) : (
-              orders.map(ord => (
+              orders.filter(ord => {
+                if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
+                if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                return true;
+              }).map(ord => (
                 <div 
                   key={ord.id}
                   onClick={() => {
                     setSelectedOrder(ord);
-                    setInputPin(ord.teletalkPin || '');
                     setAdminNoteInput(ord.adminNotes || '');
                   }}
                   className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3 hover:border-blue-300 active:bg-blue-50/50 transition cursor-pointer"
@@ -1247,11 +1211,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                       </span>
                     </div>
                     <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
-                      ord.orderStatus === 'Cancelled' || ord.paymentStatus === 'Unverified' || ord.paymentStatus === 'Failed'
-                        ? 'bg-rose-100 text-rose-900 border-rose-300 font-extrabold'
+                      ord.isFinalized || ord.orderStatus === 'Finalized'
+                        ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                         : 'bg-amber-100 text-amber-900 border-amber-300'
                     }`}>
-                      {ord.adminNotes || (ord.orderStatus === 'Cancelled' ? 'বাতিলকৃত' : 'Written Processing by Abedoni')}
+                      {ord.isFinalized || ord.orderStatus === 'Finalized' ? '✅ Finalized' : '📌 Pending Lead'}
                     </span>
                   </div>
 
@@ -1263,15 +1227,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">রোল ও বোর্ড</span>
-                      <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">{ord.roll}</span>
-                      <span className="text-blue-700 font-bold block text-[10px]">{ord.board} (Reg: {ord.reg})</span>
+                      <span className="font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded font-mono text-xs">{ord.roll || 'N/A'}</span>
+                      <span className="text-blue-700 font-bold block text-[10px]">{ord.board} (Reg: {ord.reg || 'N/A'})</span>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">বিষয়সমূহ</span>
-                      <span className="font-mono text-slate-700 truncate block text-[11px]">{ord.subjects.join(', ')}</span>
+                      <span className="font-mono text-slate-700 truncate block text-[11px]">{ord.subjects?.join(', ') || 'N/A'}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">ফি ও TrxID</span>
@@ -1280,36 +1244,73 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-100">
+                    {!ord.isFinalized && ord.orderStatus !== 'Finalized' && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(ord, e);
+                        }}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 shadow-xs"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        <span>ফাইনাল করুন</span>
+                      </button>
+                    )}
+
+                    <a
+                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, '')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 shadow-xs"
+                      title="Open WhatsApp Chat"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      <span>WhatsApp</span>
+                    </a>
+
+                    <a
+                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappInvoiceMessage(ord))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 border border-emerald-300"
+                      title="Send Invoice on WhatsApp"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Send Invoice on WhatsApp</span>
+                    </a>
+
+                    <a
+                      href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappReceiptMessage(ord))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-2 rounded-xl text-xs flex items-center gap-1 border border-emerald-300"
+                      title="Send Receipt on WhatsApp"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>Send Receipt on WhatsApp</span>
+                    </a>
+
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setSelectedOrder(ord);
-                        setInputPin(ord.teletalkPin || '');
-                        setAdminNoteInput(ord.adminNotes || '');
+                        setPreviewInvoiceOrder(ord);
+                        setPreviewModalType('invoice');
                       }}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 shadow-xs"
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 border border-slate-300"
                     >
-                      <span>ম্যানেজ & ডিটেইলস →</span>
+                      <span>🧾 মেমো</span>
                     </button>
 
                     <button
                       onClick={(e) => openEditModal(ord, e)}
-                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 shrink-0"
-                      title="Edit Student Info"
+                      className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-3.5 h-3.5" />
                     </button>
-
-                    {adminRole !== 'moderator' && (
-                      <button
-                        onClick={(e) => triggerDeleteOrder(ord, e)}
-                        className="bg-rose-100 hover:bg-rose-200 text-rose-700 font-bold px-3 py-2.5 rounded-xl text-xs transition cursor-pointer flex items-center justify-center gap-1 border border-rose-300 shrink-0"
-                        title="Delete Order"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
                   </div>
                 </div>
               ))
@@ -1332,20 +1333,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {orders.length === 0 ? (
+                  {orders.filter(ord => {
+                    if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
+                    if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                    return true;
+                  }).length === 0 ? (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-500 font-bold">
                         কোনো আবেদন পাওয়া যায়নি।
                       </td>
                     </tr>
                   ) : (
-                    orders.map(ord => (
+                    orders.filter(ord => {
+                      if (leadFilterTab === 'LEADS') return !ord.isFinalized && ord.orderStatus !== 'Finalized';
+                      if (leadFilterTab === 'FINALIZED') return ord.isFinalized || ord.orderStatus === 'Finalized';
+                      return true;
+                    }).map(ord => (
                       <tr 
                         key={ord.id} 
                         className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                         onClick={() => {
                           setSelectedOrder(ord);
-                          setInputPin(ord.teletalkPin || '');
                           setAdminNoteInput(ord.adminNotes || '');
                         }}
                       >
@@ -1361,17 +1369,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                         </td>
                         <td className="p-3.5">
                           <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md font-mono">
-                            {ord.roll}
+                            {ord.roll || 'N/A'}
                           </span>
                           <span className="text-blue-700 font-bold block text-[10px] mt-0.5">
-                            {ord.board} (Reg: {ord.reg})
+                            {ord.board} (Reg: {ord.reg || 'N/A'})
                           </span>
                         </td>
                         <td className="p-3.5 max-w-[150px]">
                           <span className="font-mono font-semibold text-slate-700 block truncate">
-                            {ord.subjects.join(', ')}
+                            {ord.subjects?.join(', ') || 'N/A'}
                           </span>
-                          <span className="text-[10px] text-slate-500">({ord.subjects.length} বিষয়)</span>
+                          <span className="text-[10px] text-slate-500">({ord.subjects?.length || 0} বিষয়)</span>
                         </td>
                         <td className="p-3.5">
                           <span className="font-bold text-emerald-700 block font-mono">৳{ord.totalFee}</span>
@@ -1379,23 +1387,67 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                         </td>
                         <td className="p-3.5">
                           <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border inline-block ${
-                            ord.orderStatus === 'Cancelled' || ord.paymentStatus === 'Unverified' || ord.paymentStatus === 'Failed'
-                              ? 'bg-rose-100 text-rose-900 border-rose-300 font-extrabold'
+                            ord.isFinalized || ord.orderStatus === 'Finalized'
+                              ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
                               : 'bg-amber-100 text-amber-900 border-amber-300'
                           }`}>
-                            {ord.adminNotes || (ord.orderStatus === 'Cancelled' ? 'বাতিলকৃত' : 'Written Processing by Abedoni')}
+                            {ord.isFinalized || ord.orderStatus === 'Finalized' ? '✅ Finalized' : '📌 Pending Lead'}
                           </span>
                         </td>
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                          {!ord.isFinalized && ord.orderStatus !== 'Finalized' && (
+                            <button
+                              onClick={(e) => openEditModal(ord, e)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                              title="Finalize Order"
+                            >
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              <span>ফাইনাল করুন</span>
+                            </button>
+                          )}
+
+                          <a
+                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, '')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                            title="Open WhatsApp Chat"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            <span>WhatsApp</span>
+                          </a>
+
+                          <a
+                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappInvoiceMessage(ord))}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-emerald-300 inline-flex items-center gap-1"
+                            title="Send Invoice on WhatsApp"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Send Invoice on WhatsApp</span>
+                          </a>
+
+                          <a
+                            href={getWhatsappDirectUrl(ord.whatsapp || ord.phone, generateWhatsappReceiptMessage(ord))}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-emerald-300 inline-flex items-center gap-1"
+                            title="Send Receipt on WhatsApp"
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-700" />
+                            <span>Send Receipt on WhatsApp</span>
+                          </a>
+
                           <button
                             onClick={() => {
-                              setSelectedOrder(ord);
-                              setInputPin(ord.teletalkPin || '');
-                              setAdminNoteInput(ord.adminNotes || '');
+                              setPreviewInvoiceOrder(ord);
+                              setPreviewModalType('invoice');
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-xs inline-flex items-center gap-1"
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer border border-slate-300 inline-flex items-center gap-1"
+                            title="Invoice & Receipt"
                           >
-                            <span>ম্যানেজ & ডিটেইলস</span>
+                            <span>🧾 মেমো</span>
                           </button>
 
                           <button
@@ -1404,7 +1456,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                             title="Edit Student Info"
                           >
                             <Edit className="w-3.5 h-3.5" />
-                            <span>এডিট</span>
                           </button>
 
                           {adminRole !== 'moderator' && (
@@ -1414,7 +1465,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                               title="Delete Order"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
-                              <span className="hidden sm:inline">ডিলিট</span>
                             </button>
                           )}
                         </td>
@@ -2042,7 +2092,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{totalFee}`}</span>
                   <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{paymentMethod}`}</span>
                   <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{trxId}`}</span>
-                  <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{teletalkPin}`}</span>
                   <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{siteUrl}`}</span>
                   <span className="bg-white/80 border border-emerald-200 px-2 py-1 rounded-lg text-emerald-900 font-bold">{`{subjects}`}</span>
                 </div>
@@ -2087,23 +2136,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 />
               </div>
 
-              {/* Template 4: Step PIN Received (1st SMS Done) */}
+              {/* Template 4: Step Completed */}
               <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
                 <label className="block font-bold text-slate-800 text-xs sm:text-sm">
-                  ৪. ১ম এসএমএস সফল ও পিন বার্তা (Step: 1st SMS Sent / PIN Received) মেসেজ:
-                </label>
-                <textarea
-                  rows={3}
-                  value={appSettings.whatsappTemplatePin || ''}
-                  onChange={e => setAppSettings({ ...appSettings, whatsappTemplatePin: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Template 5: Step Completed */}
-              <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
-                <label className="block font-bold text-slate-800 text-xs sm:text-sm">
-                  ৫. আবেদন ১০০% সফল ও রসিদ প্রস্তুত (Step: Application Completed) মেসেজ:
+                  ৪. আবেদন ১০০% সফল ও রসিদ প্রস্তুত (Step: Application Completed) মেসেজ:
                 </label>
                 <textarea
                   rows={3}
@@ -2113,10 +2149,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                 />
               </div>
 
-              {/* Template 6: Step Issue / TrxID Mismatch */}
+              {/* Template 5: Step Issue / TrxID Mismatch */}
               <div className="space-y-1.5 border border-slate-200 p-4 rounded-xl bg-slate-50/50">
                 <label className="block font-bold text-slate-800 text-xs sm:text-sm">
-                  ৬. পেমেন্ট তথ্যে অসঙ্গতি / সমস্যা (Step: Payment Issue) মেসেজ:
+                  ৫. পেমেন্ট তথ্যে অসঙ্গতি / সমস্যা (Step: Payment Issue) মেসেজ:
                 </label>
                 <textarea
                   rows={3}
@@ -2383,10 +2419,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   handleUpdateOrderStatus(
                     confirmModalData.orderId,
                     confirmModalData.targetStatus,
-                    confirmModalData.pin,
                     confirmModalData.note,
-                    confirmModalData.targetPaymentStatus,
-                    confirmModalData.boardReply1
+                    confirmModalData.targetPaymentStatus
                   );
                 }}
                 disabled={isUpdating}
@@ -2663,29 +2697,40 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
                   onChange={e => setEditForm({ ...editForm, subjects: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-xl p-3 font-mono font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  বিষয় কোড পরিবর্তন করলে টেলিটক ১ম SMS কমান্ড স্বয়ংক্রিয়ভাবে পুনঃতৈরি হয়ে যাবে।
-                </p>
               </div>
 
               {/* Form Actions */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingOrder(null)}
-                  className="px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition cursor-pointer"
                   disabled={isSavingEdit}
                 >
                   বাতিল করুন
                 </button>
-                <button
-                  type="submit"
-                  disabled={isSavingEdit}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-6 py-3 rounded-xl text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
-                >
-                  <Save className="w-4 h-4" />
-                  <span>{isSavingEdit ? 'সেভ করা হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
-                </button>
+                <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                  <button
+                    type="submit"
+                    disabled={isSavingEdit}
+                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-extrabold px-5 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{isSavingEdit ? 'সেভ করা হচ্ছে...' : 'পরিবর্তন সংরক্ষণ করুন'}</span>
+                  </button>
+
+                  {!editingOrder.isFinalized && editingOrder.orderStatus !== 'Finalized' && (
+                    <button
+                      type="button"
+                      disabled={isSavingEdit}
+                      onClick={() => handleFinalizeOrder(editingOrder, editForm)}
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      <span>{isSavingEdit ? 'প্রসেসিং...' : 'ফাইনাল অর্ডার করুন & ইনভয়েস পাঠান'}</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
             </form>
@@ -2693,6 +2738,111 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout, onSettingsUpda
           </div>
         </div>
       )}
+
+      {/* Digital Invoice / Receipt Preview Popup Modal */}
+      {previewInvoiceOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto font-bn">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 my-8 print:shadow-none print:m-0 print:border-none print:p-0">
+            
+            {/* Header / Mode Switcher */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4 print:hidden">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalType('invoice')}
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                    previewModalType === 'invoice'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  🧾 ইনভয়েস মেমো
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalType('receipt')}
+                  className={`px-4 py-2 rounded-xl text-xs font-extrabold transition cursor-pointer ${
+                    previewModalType === 'receipt'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  ✅ অফিশিয়াল মানি রিসিট
+                </button>
+              </div>
+
+              <button
+                onClick={() => setPreviewInvoiceOrder(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Invoice Printable View Container */}
+            <InvoiceCard order={previewInvoiceOrder} type={previewModalType} settings={appSettings} />
+
+            {/* Actions Bar */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 print:hidden">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full sm:w-auto bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-4 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>প্রিন্ট / PDF সেভ করুন</span>
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <a
+                  href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, '')}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer"
+                  title="Open WhatsApp Chat"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>WhatsApp Chat</span>
+                </a>
+
+                <a
+                  href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, generateWhatsappInvoiceMessage(previewInvoiceOrder))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
+                  title="Send Invoice on WhatsApp"
+                >
+                  <FileText className="w-4 h-4 text-emerald-700" />
+                  <span>Send Invoice on WhatsApp</span>
+                </a>
+
+                <a
+                  href={getWhatsappDirectUrl(previewInvoiceOrder.whatsapp || previewInvoiceOrder.phone, generateWhatsappReceiptMessage(previewInvoiceOrder))}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-900 font-extrabold px-3.5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition border border-emerald-300 cursor-pointer"
+                  title="Send Receipt on WhatsApp"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-700" />
+                  <span>Send Receipt on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* New Order Creation Modal */}
+      <NewOrderModal
+        isOpen={isNewOrderModalOpen}
+        onClose={() => setIsNewOrderModalOpen(false)}
+        onOrderCreated={(newOrder) => {
+          setOrders([newOrder, ...orders]);
+          setSelectedOrder(newOrder);
+        }}
+        appSettings={appSettings}
+      />
 
     </div>
   );

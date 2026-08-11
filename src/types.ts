@@ -22,9 +22,13 @@ export interface SubjectItem {
 }
 
 export type OrderStatus = 
-  | 'Pending' 
-  | 'Payment Verified' 
-  | 'Processing' 
+  | 'Pending Lead'
+  | 'Pending'
+  | 'Contacted'
+  | 'Payment Pending'
+  | 'Payment Verified'
+  | 'Finalized'
+  | 'Processing'
   | 'SMS Sent' 
   | 'Completed' 
   | 'Updated' 
@@ -38,9 +42,12 @@ export interface BoardChallengeOrder {
   createdAt: string;
   updatedAt: string;
   
+  // Lead / Order Finalized Flag
+  isFinalized?: boolean;
+
   // Student Info
   studentName: string;
-  fatherName: string;
+  fatherName?: string;
   motherName?: string;
   roll: string;
   reg: string;
@@ -62,17 +69,17 @@ export interface BoardChallengeOrder {
   paymentMethod: PaymentMethod;
   paymentSenderPhone: string;
   trxId: string;
-  paymentStatus: 'Paid' | 'Reviewing' | 'Unverified' | 'Failed';
+  paymentStatus: 'Paid' | 'Reviewing' | 'Unverified' | 'Failed' | 'Pending';
   
   // Order Processing Status
   orderStatus: OrderStatus;
   adminNotes?: string;
   
-  // Teletalk Auto SMS Commands & Board Replies
-  teletalkSmsCommand1?: string; // e.g. RSC DHA 123456 101,107
-  boardReply1?: string; // TeleTalk 1st SMS reply received from board
-  teletalkPin?: string; // PIN received back
-  teletalkSmsCommand2?: string; // e.g. RSC YES 87654321 01712345678
+  // Optional Legacy / Screenshot fields
+  teletalkSmsCommand1?: string;
+  boardReply1?: string;
+  teletalkPin?: string;
+  teletalkSmsCommand2?: string;
   screenshotUrl?: string;
 }
 

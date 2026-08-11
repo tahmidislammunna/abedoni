@@ -114,7 +114,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     });
   };
 
-  const handleConsultationClick = (e: React.MouseEvent) => {
+  const handleConsultationClick = async (e: React.MouseEvent) => {
     setValidationError('');
     if (!whatsappPhone.trim() || whatsappPhone.trim().length < 11) {
       e.preventDefault();
@@ -126,12 +126,47 @@ export const HomeView: React.FC<HomeViewProps> = ({
     const boardName = boardObj ? boardObj.nameBn : selectedBoard;
     const subjectNames = getSelectedSubjectNames();
 
+    const totalAmt = selectedSubjectCodes.length > 0
+      ? (selectedSubjectCodes.length * boardFeePerSubject) + serviceFee
+      : 0;
+
+    let leadId = '';
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: whatsappPhone.trim(),
+          board: selectedBoard,
+          subjects: selectedSubjectCodes,
+          isLead: true,
+          orderStatus: 'Pending Lead',
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        leadId = data.order?.id || '';
+      }
+    } catch (err) {
+      console.error('Failed to create lead record:', err);
+    }
+
     const encodedMsg = generateAssistanceRequestWhatsappMessage(
       whatsappPhone,
       boardName,
-      subjectNames
+      subjectNames,
+      totalAmt
     );
-    const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', encodedMsg);
+
+    // Add Lead ID to WhatsApp message if generated
+    let finalEncodedMsg = encodedMsg;
+    if (leadId) {
+      const decoded = decodeURIComponent(encodedMsg);
+      const withLeadId = `${decoded}\n\n📌 **অর্ডার / লিড আইডি:** ${leadId}`;
+      finalEncodedMsg = encodeURIComponent(withLeadId);
+    }
+
+    const targetUrl = getWhatsappDirectUrl(settings.whatsappNumber || '01577777092', finalEncodedMsg);
     
     window.open(targetUrl, '_blank', 'noopener,noreferrer');
   };

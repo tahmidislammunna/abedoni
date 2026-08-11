@@ -49,46 +49,33 @@ export const SSC_SUBJECTS: SubjectItem[] = [
 ];
 
 /**
- * Generate 1st TeleTalk SMS command for board challenge
- * Format: RSC <BOARD_CODE> <ROLL> <SUB_CODES>
- * Example: RSC DHA 123456 101,107
- */
-export function generateFirstSmsCommand(board: EducationBoard, roll: string, subjectCodes: string[]): string {
-  const boardSmsCode = BOARDS_LIST.find(b => b.code === board)?.codeSms || board;
-  const codesStr = subjectCodes.join(',');
-  return `RSC ${boardSmsCode} ${roll.trim()} ${codesStr}`;
-}
-
-/**
- * Generate 2nd TeleTalk SMS command using PIN
- * Format: RSC YES <PIN> <PHONE>
- * Example: RSC YES 87654321 01712345678
- */
-export function generateSecondSmsCommand(pin: string, contactPhone: string): string {
-  return `RSC YES ${pin.trim()} ${contactPhone.trim()}`;
-}
-
-/**
  * Generate Assistance Request WhatsApp Message for 1-tap WhatsApp consultation CTA
  */
 export function generateAssistanceRequestWhatsappMessage(
   phone: string,
   boardName: string,
-  subjectNames: string[]
+  subjectNames: string[],
+  totalAmount?: number
 ): string {
   const subjectsFormatted = subjectNames.length > 0
     ? subjectNames.map(s => `- ${s}`).join('\n')
     : '- কোনো বিষয় সিলেক্ট করা হয়নি (পরামর্শ প্রয়োজন)';
 
+  const feeSummary = (totalAmount && totalAmount > 0)
+    ? `মোট ফি: ৳${totalAmount} (বোর্ড ফি + সার্ভিস ফি)`
+    : `সার্ভিস চার্জ: ৳49 (বোর্ড ফি ৳150 / বিষয়)`;
+
   const text = `আসসালামু আলাইকুম,
 আমি SSC 2026 ফলাফল পুনঃনিরীক্ষণ / Board Challenge সম্পর্কে সহায়তা নিতে চাই।
 
-নাম্বার: ${phone.trim() || 'প্রদান করা হয়নি'}
-বোর্ড: ${boardName || 'প্রদান করা হয়নি'}
-নির্বাচিত বিষয়:
+মোবাইল নম্বর: ${phone.trim() || 'প্রদান করা হয়নি'}
+শিক্ষা বোর্ড: ${boardName || 'প্রদান করা হয়নি'}
+নির্বাচিত বিষয় (${subjectNames.length}টি):
 ${subjectsFormatted}
 
-আমি Abedoni-এর অভিজ্ঞ Support Team-এর সহায়তা নিতে চাই।`;
+${feeSummary}
+
+আমি Abedoni-এর অভিজ্ঞ Support Team-এর সহায়তা নিয়ে আবেদনপ্রক্রিয়া সম্পন্ন করতে চাই।`;
 
   return encodeURIComponent(text);
 }
@@ -175,6 +162,91 @@ export function generateStudentWhatsappMessage(
 অনুগ্রহ করে আমার ফলাফল পুনঃনিরীক্ষণ (Board Challenge) আবেদনটি অনলাইন পোর্টালে সম্পন্ন করতে সহায়তা করুন। ধন্যবাদ!`;
 
   return encodeURIComponent(replaceTemplateVars(templateToUse, vars));
+}
+
+/**
+ * Generate Admin-to-Student WhatsApp Invoice Message
+ */
+export function generateWhatsappInvoiceMessage(order: any): string {
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const subjectsStr = Array.isArray(order.subjectNamesBn) && order.subjectNamesBn.length > 0
+    ? order.subjectNamesBn.join(', ')
+    : Array.isArray(order.subjects)
+      ? order.subjects.join(', ')
+      : 'N/A';
+
+  const numSubjects = Array.isArray(order.subjects) ? order.subjects.length : 1;
+  const officialFee = order.officialFee || (numSubjects * 150);
+  const platformFee = order.platformFee || 49;
+  const totalFee = order.totalFee || (officialFee + platformFee);
+
+  const text = `🧾 **আবেদনী (Abedoni) - ইনভয়েস ও মেমো**
+
+• **অর্ডার / লিড আইডি:** ${order.id}
+• **শিক্ষার্থীর নাম:** ${order.studentName || 'N/A'}
+• **শিক্ষা বোর্ড:** ${order.board || 'N/A'} Board
+• **রোল নম্বর:** ${order.roll || 'N/A'}
+• **রেজিস্ট্রেশন নম্বর:** ${order.reg || 'N/A'}
+• **মোবাইল নম্বর:** ${order.phone || 'N/A'}
+• **আবেদনকৃত বিষয়সমূহ:** ${subjectsStr}
+
+💰 **ফি বিবরণী:**
+• সরকারি বোর্ড ফি (${numSubjects}টি বিষয় × ৳150): ৳${officialFee}
+• আবেদনী অনলাইন সার্ভিস ফি: ৳${platformFee}
+• **সর্বমোট প্রদেয়/পরিশোধিত:** ৳${totalFee}
+
+💳 **পেমেন্ট তথ্য:**
+• পেমেন্ট মাধ্যম: ${order.paymentMethod || 'bKash'}
+• ট্রানজেকশন আইডি (TrxID): ${order.trxId || 'N/A'}
+• পেমেন্ট স্ট্যাটাস: ${order.paymentStatus || 'Reviewing'}
+
+🔗 **আপনার লাইভ আবেদন ট্র্যাকিং লিঙ্ক:**
+${siteUrl}/tracking?id=${order.id}
+
+ধন্যবাদ!
+আবেদনী সাপোর্ট টিম`;
+
+  return encodeURIComponent(text);
+}
+
+/**
+ * Generate Admin-to-Student WhatsApp Receipt Confirmation Message
+ */
+export function generateWhatsappReceiptMessage(order: any): string {
+  const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
+  const subjectsStr = Array.isArray(order.subjectNamesBn) && order.subjectNamesBn.length > 0
+    ? order.subjectNamesBn.join(', ')
+    : Array.isArray(order.subjects)
+      ? order.subjects.join(', ')
+      : 'N/A';
+
+  const numSubjects = Array.isArray(order.subjects) ? order.subjects.length : 1;
+  const officialFee = order.officialFee || (numSubjects * 150);
+  const platformFee = order.platformFee || 49;
+  const totalFee = order.totalFee || (officialFee + platformFee);
+
+  const text = `✅ **আবেদনী (Abedoni) - অফিসিয়াল মানি রিসিট**
+
+• **রিসিট নং:** ${order.receiptId || `RCP-${order.id}`}
+• **অর্ডার আইডি:** ${order.id}
+• **শিক্ষার্থীর নাম:** ${order.studentName || 'N/A'}
+• **বোর্ড:** ${order.board || 'N/A'} | **রোল:** ${order.roll || 'N/A'} | **রেজি:** ${order.reg || 'N/A'}
+• **বিষয়সমূহ:** ${subjectsStr}
+
+💵 **পরিশোধের সারসংক্ষেপ:**
+• অফিশিয়াল সরকারি বোর্ড ফি: ৳${officialFee}
+• আবেদনী অনলাইন সহায়তা সার্ভিস ফি: ৳${platformFee}
+• **মোট প্রাপ্তি:** ৳${totalFee} (পরিশোধিত)
+• **ট্রানজেকশন আইডি:** ${order.trxId || 'N/A'} (${order.paymentMethod || 'Mobile Banking'})
+
+আপনার SSC 2026 বোর্ড চ্যালেঞ্জ আবেদনটি সফলভাবে চূড়ান্ত ও প্রসেসিং সম্পন্ন হয়েছে।
+
+অনলাইন রিসিট দেখতে ভিজিট করুন:
+${siteUrl}/tracking?id=${order.id}
+
+ধন্যবাদ, আবেদনী টিম!`;
+
+  return encodeURIComponent(text);
 }
 
 /**
